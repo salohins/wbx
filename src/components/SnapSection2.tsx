@@ -270,7 +270,7 @@ export function SnapSection({
 
     const bleedWrapperBase = [
         "absolute inset-0",
-        clipBleed ? "overflow-hidden" : "",
+        clipBleed ? "" : "",
         bleedPointerEvents ? "pointer-events-auto" : "pointer-events-none",
     ]
         .filter(Boolean)
@@ -283,7 +283,7 @@ export function SnapSection({
             className={[
                 "relative h-full w-full flex justify-center snap-start",
                 // extra safe: also clip the whole section (kills 1px overflow from filters/transforms)
-                clipBleed ? "overflow-hidden" : "",
+                clipBleed ? "" : "",
                 className,
             ]
                 .filter(Boolean)

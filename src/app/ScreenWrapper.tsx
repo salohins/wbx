@@ -303,7 +303,7 @@ export function ScreenWrapper({ children }: { children: ReactNode }) {
   "
                 style={{ scrollbarGutter: 'stable' }}
             >
-                <GlobalBackground />
+
                 {children}
             </div>
         </ScreenScrollRefContext.Provider>

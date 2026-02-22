@@ -133,11 +133,8 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
                         startLoop();
                     }}
                 >
-                    <div
-                        className="pointer-events-none absolute -inset-10 blur-[70px] transition-opacity duration-500 group-hover:opacity-90"
-                        style={{ background: `radial-gradient(circle, ${accent}, transparent 62%)` }}
-                    />
-                    <div className="pointer-events-none absolute -inset-16 bg-black/40 blur-[90px] transition-opacity duration-500 group-hover:opacity-60" />
+                    
+                   
 
                     {/* TABLET SHELL */}
                     <div
@@ -179,28 +176,9 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
 
                             {/* SCREEN */}
                             <div className="absolute inset-[10px] rounded-[46px] overflow-hidden bg-transparent border border-white/10">
-                                {/* ✅ screen shine (UNCHANGED) */}
-                                <div
-                                    aria-hidden
-                                    className="pointer-events-none absolute inset-0 z-20 opacity-[0.18] motion-safe:animate-[shine_3.8s_ease-in-out_infinite] motion-reduce:hidden mix-blend-overlay"
-                                >
-                                    <div
-                                        className="absolute -left-1/2 top-0 h-full w-[200%]"
-                                        style={{
-                                            background:
-                                                "linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.70) 42%, transparent 75%)",
-                                        }}
-                                    />
-                                </div>
+                                
 
-                                <div
-                                    aria-hidden
-                                    className="pointer-events-none absolute inset-0 z-0"
-                                    style={{
-                                        background:
-                                            "radial-gradient(circle at 50% 12%, rgba(255,255,255,0.06), transparent 55%), radial-gradient(circle at 80% 70%, rgba(0,0,0,0.10), transparent 60%)",
-                                    }}
-                                />
+                               
 
                                 {/* notch */}
                                 <div
@@ -240,19 +218,19 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
                                                 opacity: 0,
                                                 y: 18,
                                                 scale: 0.985,
-                                                filter: "blur(10px) saturate(0.9)",
+                           
                                             }}
                                             animate={{
                                                 opacity: 1,
                                                 y: 0,
                                                 scale: 1,
-                                                filter: "blur(0px) saturate(1)",
+                                        
                                             }}
                                             exit={{
                                                 opacity: 0,
                                                 y: -14,
                                                 scale: 1.01,
-                                                filter: "blur(10px) saturate(0.9)",
+                                           
                                             }}
                                             transition={{
                                                 duration: 0.42,
@@ -273,9 +251,9 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
                                                 }}
                                             />
 
-                                            {active === "websites" && <WebsitePreview />}
-                                            {active === "tools" && <ToolsPreview />}
-                                            {active === "branding" && <BrandingPreview />}
+                                                {active === "websites" && <WebsitePreview />}
+                                                {active === "tools" && <ToolsPreview />}
+                                                {active === "branding" && <BrandingPreview />}
                                         </motion.div>
                                     </AnimatePresence>
 
