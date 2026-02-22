@@ -412,24 +412,6 @@ export function AboutParallaxBackground({
                 baseScale={baseScale}
                 frontDrop={frontDrop}
             />
-
-            {/* fog / mist */}
-            <div
-                className="absolute inset-0 blur-[18px]"
-                style={{
-                    opacity: fogOpacity as any,
-                    background:
-                        "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.10), transparent 55%)," +
-                        "radial-gradient(circle at 70% 45%, rgba(255,255,255,0.08), transparent 60%)," +
-                        "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.30))",
-                }}
-            />
-
-            {/* accent glow */}
-            <div
-                className="absolute -inset-24 blur-[90px] opacity-55"
-                style={{ background: `radial-gradient(circle, ${accent}, transparent 62%)` }}
-            />
         </div>
     );
 }

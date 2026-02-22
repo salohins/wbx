@@ -1,22 +1,15 @@
 // src/components/ParallaxScene.tsx
 "use client";
 
-import React from "react";
-import {
-    motion,
-    type MotionValue,
-    useMotionTemplate,
-    useTransform,
-} from "framer-motion";
+import React, { useMemo } from "react";
+import { motion, type MotionValue, useMotionTemplate, useTransform } from "framer-motion";
 
 export type ParallaxLayerConfig = {
     id: string;
     src: string;
     alt?: string;
+    depth: number;
 
-    depth: number; // 0..1+ (back -> front)
-
-    /** Base/local layer offsets (static or MV) */
     x?: number | MotionValue<number>;
     y?: number | MotionValue<number>;
     scale?: number | MotionValue<number>;
@@ -28,30 +21,139 @@ export type ParallaxLayerConfig = {
     blendMode?: React.CSSProperties["mixBlendMode"];
     pointerEvents?: "none" | "auto";
 
-    /** ✅ Pose overrides (per-pose deltas / multipliers) */
     poseX?: number | MotionValue<number>;
     poseY?: number | MotionValue<number>;
-    /** multiplier (1 = no change). Final scale = baseScale * (layerScale+depthZoom) * poseScaleMul */
     poseScaleMul?: number | MotionValue<number>;
-    /** multiplier (1 = no change). Final opacity = layerOpacity * poseOpacityMul */
     poseOpacityMul?: number | MotionValue<number>;
-    /** extra blur added on top of base blur */
     poseBlurAdd?: number | MotionValue<number>;
 };
 
 type MaybeMV = number | MotionValue<number>;
-
 function isMV(v: MaybeMV): v is MotionValue<number> {
     return typeof v !== "number";
 }
-function asMV(v: MaybeMV): MotionValue<number> {
-    return v as MotionValue<number>;
+
+function mvConst(ref: MotionValue<number>, v: number) {
+    // constant MV derived from another MV (so we don’t allocate new motion values)
+    return useTransform(ref, () => v);
 }
 
-type Props = {
+function useMaybeMV(anchor: MotionValue<number>, v: MaybeMV) {
+    return isMV(v) ? v : mvConst(anchor, v);
+}
+
+function ParallaxLayer({
+    L,
+    mx,
+    my,
+    sx,
+    sy,
+    ds,
+    bx,
+    by,
+    bs,
+    fd,
+    disabled,
+}: {
+    L: ParallaxLayerConfig;
     mx: MotionValue<number>;
     my: MotionValue<number>;
+    sx: MotionValue<number>;
+    sy: MotionValue<number>;
+    ds: MotionValue<number>;
+    bx: MotionValue<number>;
+    by: MotionValue<number>;
+    bs: MotionValue<number>;
+    fd: MotionValue<number>;
+    disabled?: boolean;
+}) {
+    const Lx = useMaybeMV(mx, L.x ?? 0);
+    const Ly = useMaybeMV(my, L.y ?? 0);
 
+    const poseX = useMaybeMV(mx, L.poseX ?? 0);
+    const poseY = useMaybeMV(my, L.poseY ?? 0);
+
+    const layerOpacity = useMaybeMV(mx, L.opacity ?? 1);
+    const poseOpacityMul = useMaybeMV(mx, L.poseOpacityMul ?? 1);
+
+    const layerBlur = useMaybeMV(mx, L.blur ?? 0);
+    const poseBlurAdd = useMaybeMV(mx, L.poseBlurAdd ?? 0);
+
+    const poseScaleMul = useMaybeMV(mx, L.poseScaleMul ?? 1);
+    const layerScale = useMaybeMV(mx, L.scale ?? 1);
+
+    const x = useTransform([mx, sx, bx, Lx, poseX], ([m, s, b, local, px]) => {
+        const par = disabled ? 0 : m * s * L.depth;
+        return b + par + local + px;
+    });
+
+    const y = useTransform([my, sy, by, fd, Ly, poseY], ([m, s, b, drop, local, py]) => {
+        const par = disabled ? 0 : m * s * L.depth;
+        const extraDrop = drop * L.depth;
+        return b + par + local + extraDrop + py;
+    });
+
+    const scale = useTransform([ds, bs, layerScale, poseScaleMul], ([dscale, bscale, layerBase, pMul]) => {
+        const depthZoom = disabled ? 0 : Math.abs(L.depth) * dscale;
+        return bscale * (layerBase + depthZoom) * pMul;
+    });
+
+    const opacity = useTransform([layerOpacity, poseOpacityMul], ([o, mul]) => o * mul);
+
+    // Blur is expensive on mobile GPUs. Keep it optional.
+    const blurPx = useTransform([layerBlur, poseBlurAdd], ([b0, b1]) => Math.max(0, b0 + b1));
+    const filter = useMotionTemplate`blur(${blurPx}px)`;
+    const useFilter = (L.blur ?? 0) > 0 || (L.poseBlurAdd ?? 0) > 0;
+
+    return (
+        <motion.div
+            className="absolute inset-0"
+            style={{
+                x,
+                y,
+                scale,
+                zIndex: L.zIndex ?? 0,
+                opacity,
+                filter: useFilter ? filter : undefined,
+
+                mixBlendMode: L.blendMode,
+                pointerEvents: L.pointerEvents ?? "none",
+
+                // helps reduce flicker on mobile
+                backfaceVisibility: "hidden",
+                transformStyle: "preserve-3d",
+                willChange: "transform, opacity",
+            }}
+        >
+            <img
+                src={L.src}
+                alt={L.alt ?? ""}
+                className="absolute inset-0 h-full w-full object-cover"
+                draggable={false}
+                // helps avoid decode stutter
+                decoding="async"
+                loading="eager"
+            />
+        </motion.div>
+    );
+}
+
+export function ParallaxScene({
+    mx,
+    my,
+    layers,
+    disabled,
+    className,
+    strengthX = 40,
+    strengthY = 22,
+    depthScale = 0.02,
+    baseX = 0,
+    baseY = 0,
+    baseScale = 1,
+    frontDrop = 0,
+}: {
+    mx: MotionValue<number>;
+    my: MotionValue<number>;
     layers: ParallaxLayerConfig[];
     disabled?: boolean;
     className?: string;
@@ -60,115 +162,42 @@ type Props = {
     strengthY?: MaybeMV;
     depthScale?: MaybeMV;
 
-    /** pose/camera controls */
     baseX?: MaybeMV;
     baseY?: MaybeMV;
     baseScale?: MaybeMV;
 
-    /** pushes near layers down more than far layers */
     frontDrop?: MaybeMV;
-};
+}) {
+    const sx = useMaybeMV(mx, strengthX);
+    const sy = useMaybeMV(my, strengthY);
+    const ds = useMaybeMV(mx, depthScale);
 
-export function ParallaxScene({
-    mx,
-    my,
-    layers,
-    disabled,
-    className,
+    const bx = useMaybeMV(mx, baseX);
+    const by = useMaybeMV(my, baseY);
+    const bs = useMaybeMV(mx, baseScale);
 
-    strengthX = 40,
-    strengthY = 22,
-    depthScale = 0.02,
+    const fd = useMaybeMV(my, frontDrop);
 
-    baseX = 0,
-    baseY = 0,
-    baseScale = 1,
-
-    frontDrop = 0,
-}: Props) {
-    // Convert “maybe motion values” to motion values by creating transforms
-    const sx = isMV(strengthX) ? asMV(strengthX) : useTransform(mx, () => strengthX);
-    const sy = isMV(strengthY) ? asMV(strengthY) : useTransform(my, () => strengthY);
-    const ds = isMV(depthScale) ? asMV(depthScale) : useTransform(mx, () => depthScale);
-
-    const bx = isMV(baseX) ? asMV(baseX) : useTransform(mx, () => baseX);
-    const by = isMV(baseY) ? asMV(baseY) : useTransform(my, () => baseY);
-    const bs = isMV(baseScale) ? asMV(baseScale) : useTransform(mx, () => baseScale);
-
-    const fd = isMV(frontDrop) ? asMV(frontDrop) : useTransform(my, () => frontDrop);
-
-    // helper: turn a MaybeMV into an MV without allocating a new motion value
-    // For numbers we wrap via useTransform on mx/my (constant transform).
-    const mvX = (v: MaybeMV) => (isMV(v) ? asMV(v) : useTransform(mx, () => v));
-    const mvY = (v: MaybeMV) => (isMV(v) ? asMV(v) : useTransform(my, () => v));
+    const stableLayers = useMemo(() => layers, [layers]);
 
     return (
         <div className={["absolute inset-0", className].filter(Boolean).join(" ")}>
-            {layers.map((L) => {
-                const Lx = L.x ?? 0;
-                const Ly = L.y ?? 0;
-
-                const poseX = L.poseX ?? 0;
-                const poseY = L.poseY ?? 0;
-
-                const layerOpacity = L.opacity ?? 1;
-                const poseOpacityMul = L.poseOpacityMul ?? 1;
-
-                const layerBlur = L.blur ?? 0;
-                const poseBlurAdd = L.poseBlurAdd ?? 0;
-
-                const poseScaleMul = L.poseScaleMul ?? 1;
-
-                // ✅ x/y from: base pan + mouse parallax + local offsets + pose deltas
-                const x = useTransform([mx, sx, bx, mvX(Lx), mvX(poseX)], ([m, s, b, local, px]) => {
-                    const par = disabled ? 0 : m * s * L.depth;
-                    return b + par + local + px;
-                });
-
-                const y = useTransform([my, sy, by, fd, mvY(Ly), mvY(poseY)], ([m, s, b, drop, local, py]) => {
-                    const par = disabled ? 0 : m * s * L.depth;
-                    const extraDrop = drop * L.depth; // front layers drop more
-                    return b + par + local + extraDrop + py;
-                });
-
-                // ✅ scale from: base zoom + per-layer scale + depthScale, then poseScaleMul
-                const scale = useTransform([ds, bs, mvX(L.scale ?? 1), mvX(poseScaleMul)], ([dscale, bscale, layerBase, pMul]) => {
-                    const depthZoom = disabled ? 0 : Math.abs(L.depth) * dscale;
-                    return bscale * (layerBase + depthZoom) * pMul;
-                });
-
-                // ✅ opacity + pose multiplier (MV-friendly)
-                const opacity = useTransform([mvX(layerOpacity), mvX(poseOpacityMul)], ([o, mul]) => o * mul);
-
-                // ✅ blur: base + pose add (MV-friendly) -> filter string via useMotionTemplate
-                const blurPx = useTransform([mvX(layerBlur), mvX(poseBlurAdd)], ([b0, b1]) => Math.max(0, b0 + b1));
-                const filter = useMotionTemplate`blur(${blurPx}px)`;
-
-                return (
-                    <motion.div
-                        key={L.id}
-                        className="absolute inset-0"
-                        style={{
-                            x,
-                            y,
-                            scale,
-                            zIndex: L.zIndex ?? 0,
-                            opacity,
-                            filter: (L.blur || L.poseBlurAdd) ? filter : undefined,
-                            mixBlendMode: L.blendMode,
-                            pointerEvents: L.pointerEvents ?? "none",
-                            willChange: "transform, filter, opacity",
-                        }}
-                    >
-                        <img
-                            src={L.src}
-                            alt={L.alt ?? ""}
-                            className="absolute inset-0 h-full w-full object-cover"
-                            draggable={false}
-                        />
-                    </motion.div>
-                );
-            })}
+            {stableLayers.map((L) => (
+                <ParallaxLayer
+                    key={L.id}
+                    L={L}
+                    mx={mx}
+                    my={my}
+                    sx={sx}
+                    sy={sy}
+                    ds={ds}
+                    bx={bx}
+                    by={by}
+                    bs={bs}
+                    fd={fd}
+                    disabled={disabled}
+                />
+            ))}
         </div>
     );
 }
