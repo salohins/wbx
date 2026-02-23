@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { motion, useMotionValue, animate } from "framer-motion";
 
 type SlideItem = { id: string; order: number };
 type BleedItem = { id: string; order: number; layer: "behind" | "front" };
@@ -24,6 +25,24 @@ function useMediaQuery(query: string) {
     }, [query]);
 
     return matches;
+}
+
+function useElementWidth<T extends HTMLElement>() {
+    const ref = React.useRef<T | null>(null);
+    const [width, setWidth] = React.useState(0);
+
+    React.useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+
+        const ro = new ResizeObserver(() => setWidth(el.clientWidth || 0));
+        ro.observe(el);
+        setWidth(el.clientWidth || 0);
+
+        return () => ro.disconnect();
+    }, []);
+
+    return [ref, width] as const;
 }
 
 type DesktopAlign = "top" | "center" | "bottom";
@@ -73,6 +92,8 @@ type SnapSectionProps = {
     /**
      * Prevent full-bleed glows/blur from creating horizontal page scroll.
      * Default true, because bleed is usually decorative.
+     *
+     * (Not used for the mobile slider anymore.)
      */
     clipBleed?: boolean;
 };
@@ -102,17 +123,50 @@ export function SnapSection({
     // stores the actual bleed ReactNodes without causing re-renders
     const bleedNodesRef = React.useRef<Map<string, ReactNode>>(new Map());
 
+    // ✅ IMPORTANT: refs don't trigger renders; bump this to refresh slider content
+    const [, bumpNodeVersion] = React.useState(0);
+
+    // ✅ prevent re-render spam while dragging: only bump once per id (or when removed)
+    const seenNodeIdsRef = React.useRef<Set<string>>(new Set());
+    const seenBleedIdsRef = React.useRef<Set<string>>(new Set());
+
     // stores only id/order list (this is what renders the slider)
     const [slideList, setSlideList] = React.useState<SlideItem[]>([]);
     // stores bleed id/order/layer list (rendered outside maxWidth box)
     const [bleedList, setBleedList] = React.useState<BleedItem[]>([]);
 
     // ✅ mobile slider tracking
-    const scrollerRef = React.useRef<HTMLDivElement | null>(null);
     const [activeIndex, setActiveIndex] = React.useState(0);
+
+    // ✅ Framer Motion: use MotionValue (no React re-render per frame)
+    const x = useMotionValue(0);
+
+    // ✅ measure viewport width for snap math
+    const [viewportRef, viewportW] = useElementWidth<HTMLDivElement>();
+
+    // ✅ keep a stable "current index" ref for drag math
+    const activeIndexRef = React.useRef(0);
+    React.useEffect(() => {
+        activeIndexRef.current = activeIndex;
+    }, [activeIndex]);
+
+    // ✅ defer state updates so snap animation doesn’t hitch on first frame
+    const setActiveIndexDeferred = React.useCallback((next: number) => {
+        requestAnimationFrame(() => {
+            const startTransition = (React as any).startTransition as undefined | ((cb: () => void) => void);
+            if (startTransition) startTransition(() => setActiveIndex(next));
+            else setActiveIndex(next);
+        });
+    }, []);
 
     const setNode = React.useCallback((id: string, node: ReactNode) => {
         nodesRef.current.set(id, node);
+
+        // ✅ bump ONLY the first time this id is seen (prevents jitter)
+        if (!seenNodeIdsRef.current.has(id)) {
+            seenNodeIdsRef.current.add(id);
+            bumpNodeVersion((v) => v + 1);
+        }
     }, []);
 
     const register = React.useCallback((id: string, order: number) => {
@@ -139,12 +193,19 @@ export function SnapSection({
 
     const unregister = React.useCallback((id: string) => {
         nodesRef.current.delete(id);
+        seenNodeIdsRef.current.delete(id);
         setSlideList((prev) => prev.filter((s) => s.id !== id));
+        bumpNodeVersion((v) => v + 1);
     }, []);
 
     // ----- BLEED REGISTRY -----
     const setBleedNode = React.useCallback((id: string, node: ReactNode) => {
         bleedNodesRef.current.set(id, node);
+
+        if (!seenBleedIdsRef.current.has(id)) {
+            seenBleedIdsRef.current.add(id);
+            bumpNodeVersion((v) => v + 1);
+        }
     }, []);
 
     const registerBleed = React.useCallback(
@@ -183,7 +244,9 @@ export function SnapSection({
 
     const unregisterBleed = React.useCallback((id: string) => {
         bleedNodesRef.current.delete(id);
+        seenBleedIdsRef.current.delete(id);
         setBleedList((prev) => prev.filter((b) => b.id !== id));
+        bumpNodeVersion((v) => v + 1);
     }, []);
 
     // ✅ make context value stable
@@ -217,45 +280,55 @@ export function SnapSection({
         setActiveIndex((i) => clampIndex(i));
     }, [isMobile, clampIndex]);
 
-    // track active slide by scroll position (mobile only)
+    // ✅ snap to index (motion value) — START ANIMATION FIRST, then update React state deferred
+    const snapToIndex = React.useCallback(
+        (i: number, opts?: { instant?: boolean }) => {
+            const next = clampIndex(i);
+
+            // ✅ keep ref correct immediately (drag math + next swipe)
+            activeIndexRef.current = next;
+
+            const w = viewportW || 1;
+            const target = -next * w;
+
+            if (opts?.instant) {
+                x.set(target);
+                setActiveIndex(next);
+                return;
+            }
+
+            // ✅ start snap animation first (no React commit yet)
+            animate(x, target, {
+                type: "tween",
+                duration: 0.28,
+                ease: [0.22, 1, 0.36, 1],
+            });
+
+            // ✅ defer state update (prevents micro-freeze right after release)
+            setActiveIndexDeferred(next);
+        },
+        [clampIndex, viewportW, x, setActiveIndexDeferred]
+    );
+
+    // ✅ when viewportW changes (rotation / resize), keep the same index aligned
     React.useEffect(() => {
         if (!isMobile) return;
-        const el = scrollerRef.current;
-        if (!el) return;
+        snapToIndex(activeIndexRef.current, { instant: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isMobile, viewportW]);
 
-        let raf = 0;
+    // ✅ clamp x into valid bounds when layout changes (prevents "weird dimension")
+    React.useEffect(() => {
+        if (!isMobile) return;
+        if (viewportW <= 0) return;
 
-        const update = () => {
-            const w = el.clientWidth || 1;
-            const next = clampIndex(Math.round(el.scrollLeft / w));
-            setActiveIndex(next);
-        };
+        const minX = -(Math.max(0, slideCount - 1) * viewportW);
+        const maxX = 0;
 
-        const onScroll = () => {
-            cancelAnimationFrame(raf);
-            raf = requestAnimationFrame(update);
-        };
-
-        el.addEventListener("scroll", onScroll, { passive: true });
-        // initialize
-        update();
-        requestAnimationFrame(update);
-
-        return () => {
-            cancelAnimationFrame(raf);
-            el.removeEventListener("scroll", onScroll as any);
-        };
-    }, [isMobile, clampIndex, slideCount]);
-
-    const scrollToIndex = (i: number) => {
-        const el = scrollerRef.current;
-        if (!el) return;
-
-        const next = clampIndex(i);
-        const w = el.clientWidth || 1;
-        el.scrollTo({ left: next * w, behavior: "smooth" });
-        setActiveIndex(next);
-    };
+        const current = x.get();
+        if (current < minX) x.set(minX);
+        if (current > maxX) x.set(maxX);
+    }, [isMobile, viewportW, slideCount, x]);
 
     const showDots = isMobile && slideCount > 1;
 
@@ -276,49 +349,61 @@ export function SnapSection({
         .filter(Boolean)
         .join(" ");
 
+    // ✅ Shadow gutter (tune this number)
+    const SHADOW_GUTTER_PX = 28;
+
     return (
         <section
             id={sectionId}
             data-section={sectionId}
             className={[
                 "relative h-full w-full flex justify-center snap-start",
-                // extra safe: also clip the whole section (kills 1px overflow from filters/transforms)
-                clipBleed ? "" : "",
                 className,
             ]
                 .filter(Boolean)
                 .join(" ")}
+            style={{
+                // ✅ prevents page-level horizontal dragging without using overflow:hidden
+                overflowX: "clip",
+                // ✅ kills horizontal rubber-band on mobile
+                overscrollBehaviorX: "none",
+            }}
         >
             <SnapCtx.Provider value={ctxValue}>
-                {/* ✅ FULL-BLEED LAYER (BEHIND) */}
                 {bleedBehind.length > 0 && (
                     <div className={`${bleedWrapperBase} z-0`}>{bleedBehind}</div>
                 )}
 
-                {/* ✅ BOXED CONTENT */}
                 <div className={`relative z-10 h-full w-full flex flex-col ${maxWidth} ${align}`}>
-                    {/* Header (stays above content within the aligned column) */}
                     {(title || subtitle) && (
-                        <div className="pt-4 pb-3 px-5 absolute top-0 left-0 md:relative z-20">
-                            {title && (
-                                <h2 className="text-neutral-900 dark:text-white text-lg font-medium md:text-4xl md:font-bold">
-                                    {title}
-                                </h2>
-                            )}
-                            {subtitle && (
-                                <p className="mt-1 text-sm md:text-lg text-neutral-600 dark:text-white/70 font-normal">
-                                    {subtitle}
-                                </p>
-                            )}
+                        <div className="absolute top-0 left-0 md:relative z-20 w-full ">
+                            <div
+                                className="bg-neutral-100/10 dark:bg-neutral-900/10 backdrop-blur-md pt-4 pb-3 px-5   "
+                                style={{
+                                    // ✅ when swiping title, don't allow browser horizontal pan
+                                    touchAction: "pan-y",
+                                }}
+                            >
+                                {title && (
+                                    <h2 className="text-neutral-900 dark:text-white text-lg font-medium md:text-4xl md:font-bold">
+                                        {title}
+                                    </h2>
+                                )}
+                                {subtitle && (
+                                    <p className="mt-1 text-sm md:text-lg text-neutral-600 dark:text-white/70 font-normal">
+                                        {subtitle}
+                                    </p>
+                                )}
 
-                            {/* ✅ Mobile progress dots under subtitle */}
+
+                            </div>
                             {showDots && (
-                                <div className="mt-3 flex items-center gap-2">
+                                <div className="mt-3 px-5 flex items-center gap-2">
                                     {Array.from({ length: slideCount }).map((_, i) => (
                                         <button
                                             key={i}
                                             type="button"
-                                            onClick={() => scrollToIndex(i)}
+                                            onClick={() => snapToIndex(i)}
                                             aria-label={`Go to slide ${i + 1}`}
                                             className={[
                                                 "h-2.5 w-2.5 rounded-full transition-transform bg-white",
@@ -331,12 +416,9 @@ export function SnapSection({
                         </div>
                     )}
 
-                    {/* Body area takes the remaining height */}
                     <div className="relative z-0 h-full md:h-auto w-full min-h-0">
-                        {/* Desktop: normal render */}
                         {isDesktop && <div className="h-full w-full px-6">{children}</div>}
 
-                        {/* Mobile: mount children invisibly so Slides can register */}
                         {isMobile && (
                             <div
                                 aria-hidden="true"
@@ -346,26 +428,70 @@ export function SnapSection({
                             </div>
                         )}
 
-                        {/* Mobile slider */}
                         {isMobile && (
                             <div
-                                ref={scrollerRef}
-                                className="h-full w-full overflow-x-auto snap-x snap-mandatory flex scrollbar-hide"
+                                ref={viewportRef}
+                                className="h-full w-full"
+                                style={{
+                                    // keep your existing behavior; no overflow hidden
+                                    overflow: "",
+                                    paddingLeft: SHADOW_GUTTER_PX,
+                                    paddingRight: SHADOW_GUTTER_PX,
+                                }}
                             >
-                                {slideList.map((s) => (
-                                    <div
-                                        key={s.id}
-                                        className="w-full flex flex-col px-5 justify-center items-center shrink-0 snap-start h-full"
-                                    >
-                                        {nodesRef.current.get(s.id) ?? null}
-                                    </div>
-                                ))}
+                                <motion.div
+                                    className="h-full flex"
+                                    style={{
+                                        x,
+                                        marginLeft: -SHADOW_GUTTER_PX,
+                                        marginRight: -SHADOW_GUTTER_PX,
+                                        willChange: "transform",
+                                        touchAction: "pan-y",
+                                    }}
+                                    drag={viewportW > 0 && slideCount > 1 ? "x" : false}
+                                    dragElastic={0.08}
+                                    dragMomentum={false} // ✅ no fling -> no "dimension"
+                                    onDragStart={() => {
+                                        // ✅ stop any running animation so drag doesn't fight it
+                                        (x as any).stop?.();
+                                    }}
+                                    dragConstraints={{
+                                        left: -(Math.max(0, slideCount - 1) * (viewportW || 0)),
+                                        right: 0,
+                                    }}
+                                    onDragEnd={(_, info) => {
+                                        const w = viewportW || 1;
+                                        const offsetX = info.offset.x;
+                                        const velocityX = info.velocity.x;
+
+                                        let next = activeIndexRef.current;
+
+                                        const SWIPE_DIST = w * 0.18;
+                                        const SWIPE_VEL = 600;
+
+                                        if (offsetX < -SWIPE_DIST || velocityX < -SWIPE_VEL) next += 1;
+                                        else if (offsetX > SWIPE_DIST || velocityX > SWIPE_VEL) next -= 1;
+
+                                        snapToIndex(next);
+                                    }}
+                                >
+                                    {slideList.map((s) => (
+                                        <div
+                                            key={s.id}
+                                            className="shrink-0 h-full"
+                                            style={{ width: viewportW || "100%" }}
+                                        >
+                                            <div className="w-full h-full flex flex-col px-5 justify-center items-center">
+                                                {nodesRef.current.get(s.id) ?? null}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </motion.div>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* ✅ FULL-BLEED LAYER (FRONT) */}
                 {bleedFront.length > 0 && (
                     <div className={`${bleedWrapperBase} z-20`}>{bleedFront}</div>
                 )}
@@ -385,14 +511,12 @@ SnapSection.Slide = function Slide({
 }) {
     const ctx = React.useContext(SnapCtx);
 
-    // mount/unmount: register the slide id/order exactly once (unless id/order changes)
     React.useEffect(() => {
         if (!ctx) return;
         ctx.register(id, order);
         return () => ctx.unregister(id);
     }, [ctx, id, order]);
 
-    // update node whenever children changes (NO setState, safe)
     React.useEffect(() => {
         if (!ctx) return;
         ctx.setNode(id, children);
@@ -402,13 +526,6 @@ SnapSection.Slide = function Slide({
     return ctx.isMobile ? null : <>{children}</>;
 };
 
-/**
- * ✅ NEW: full-bleed content that renders inside the section but outside maxWidth.
- *
- * layer:
- * - "behind": under the boxed content (background glows, gradients, patterns)
- * - "front": over the boxed content (vignettes, overlays, decorative frames)
- */
 SnapSection.Bleed = function Bleed({
     id,
     order = 0,
@@ -433,7 +550,6 @@ SnapSection.Bleed = function Bleed({
         ctx.setBleedNode(id, children);
     }, [ctx, id, children]);
 
-    // never render in-flow; it's rendered by the section itself
     if (!ctx) return <>{children}</>;
     return null;
 };

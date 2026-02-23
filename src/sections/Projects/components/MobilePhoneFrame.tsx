@@ -4,9 +4,6 @@ import { Wifi, Signal } from "lucide-react";
 import { animate, motion, useMotionTemplate, useMotionValue, useInView } from "framer-motion";
 import { LoopVideo } from "./LoopVideo";
 
-/** shared shadow token */
-const DEVICE_SHADOW = "shadow-[0_18px_60px_rgba(0,0,0,0.35)]";
-
 /** optional glow helper */
 export function DeviceGlow({ accent }: { accent: string }) {
   return (
@@ -66,6 +63,102 @@ export function useNowTimeString() {
   return t;
 }
 
+/** small-screen detector (Tailwind sm = 640px) */
+function useIsSmallScreen() {
+  const [isSmall, setIsSmall] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const m = window.matchMedia("(max-width: 639px)");
+    const on = () => setIsSmall(m.matches);
+    on();
+    if ((m as any).addEventListener) (m as any).addEventListener("change", on);
+    else (m as any).addListener(on);
+    return () => {
+      if ((m as any).removeEventListener) (m as any).removeEventListener("change", on);
+      else (m as any).removeListener(on);
+    };
+  }, []);
+
+  return isSmall;
+}
+
+/** viewport width for dynamic tuning (small vs big phones) */
+function useViewportWidth() {
+  const [vw, setVw] = useState<number>(() => (typeof window !== "undefined" ? window.innerWidth : 999));
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const on = () => setVw(window.innerWidth);
+    on();
+    window.addEventListener("resize", on, { passive: true });
+    window.addEventListener("orientationchange", on);
+    return () => {
+      window.removeEventListener("resize", on as any);
+      window.removeEventListener("orientationchange", on as any);
+    };
+  }, []);
+
+  return vw;
+}
+
+/**
+ * Compute a scale so the phone "fits" inside the parent box.
+ * NOTE: parent height must be real to matter. If parent height is auto/content,
+ * width usually becomes the limiting factor (still fine).
+ */
+function useFitScale(
+  hostRef: React.RefObject<HTMLElement>,
+  opts: {
+    baseW: number;
+    baseH: number;
+    maxWFrac?: number; // 0..1 (how much of parent width the device can take)
+    maxHFrac?: number; // 0..1 (how much of parent height the device can take)
+    min?: number;
+    max?: number;
+  }
+) {
+  const { baseW, baseH, maxWFrac = 0.92, maxHFrac = 0.88, min = 0.72, max = 1 } = opts;
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+
+    const parent = el.parentElement;
+    if (!parent) return;
+
+    const compute = () => {
+      const pw = parent.clientWidth || 1;
+      const ph = parent.clientHeight || 1;
+
+      const sW = (pw * maxWFrac) / baseW;
+      const sH = (ph * maxHFrac) / baseH;
+
+      // If parent has no meaningful height (common), sH might be huge — min() keeps it safe.
+      const s = Math.max(min, Math.min(max, Math.min(sW, sH)));
+      setScale(s);
+    };
+
+    compute();
+
+    const ro = new ResizeObserver(() => compute());
+    ro.observe(parent);
+
+    // also recompute on orientation changes / viewport changes (some browsers won't trigger RO reliably)
+    window.addEventListener("orientationchange", compute);
+    window.addEventListener("resize", compute);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", compute);
+      window.removeEventListener("resize", compute);
+    };
+  }, [hostRef, baseW, baseH, maxWFrac, maxHFrac, min, max]);
+
+  return scale;
+}
+
 export function PhoneStatusBar({
   time,
   variant = "light",
@@ -109,7 +202,6 @@ export function MobilePhoneFrame({
   fallbackImgSrc,
   alt,
   accent,
-  overlay,
   href,
   statusVariant = "light",
   statusSafeTop = "pt-10",
@@ -120,7 +212,6 @@ export function MobilePhoneFrame({
   fallbackImgSrc?: string;
   alt: string;
   accent: string;
-  overlay?: React.ReactNode;
   href?: string;
   statusVariant?: "light" | "dark";
   statusSafeTop?: string;
@@ -132,6 +223,33 @@ export function MobilePhoneFrame({
   // ✅ pause float loop when offscreen
   const hostRef = useRef<HTMLDivElement | null>(null);
   const inView = useInView(hostRef, { amount: 0.2 });
+
+  // ✅ only scale-fit on small screens
+  const isSmall = useIsSmallScreen();
+
+  // ✅ viewport width (used to relax scaling on big phones)
+  const vw = useViewportWidth();
+
+  // Designed "base" size of the phone (matches your max-w and aspect)
+  const BASE_W = 340;
+  const BASE_H = BASE_W * (19 / 10); // aspect [10/19] => height = width*(19/10)
+
+  // ✅ Dynamic constraints:
+  // small phones (~360px) => strict
+  // big phones  (~430px) => relaxed
+  const t = Math.max(0, Math.min(1, (vw - 360) / (430 - 360))); // 0..1
+  const dynamicMaxHFrac = 0.85 + t * 0.20; // 0.85 -> 1.05 (bigger phones get bigger device)
+  const dynamicMaxWFrac = 1.0;
+
+  // Scale relative to parent box (width + height constraints)
+  const fitScale = useFitScale(hostRef as React.RefObject<HTMLElement>, {
+    baseW: BASE_W,
+    baseH: BASE_H,
+    maxWFrac: dynamicMaxWFrac,
+    maxHFrac: dynamicMaxHFrac,
+    min: 0.72,
+    max: 1.06, // ✅ allow big phones to be a bit bigger when height-limited
+  });
 
   // Motion values
   const y = useMotionValue(0);
@@ -224,7 +342,7 @@ export function MobilePhoneFrame({
     );
 
   return (
-    <div ref={hostRef} className="relative w-full max-w-[340px] overflow-visible">
+    <div ref={hostRef} className="relative w-full max-w-[340px] overflow-visible mx-auto">
       <div
         className={[
           "group relative overflow-visible",
@@ -269,6 +387,10 @@ export function MobilePhoneFrame({
                 "md:group-hover:shadow-[0_18px_60px_rgba(0,0,0,0.35)]",
                 clickable ? "cursor-pointer" : "",
               ].join(" ")}
+              style={{
+                transform: `scale(${isSmall ? fitScale : 1})`,
+                transformOrigin: "center center", // ✅ unchanged
+              }}
             >
               {/* side buttons */}
               <div
@@ -337,8 +459,6 @@ export function MobilePhoneFrame({
                   <div className="absolute inset-0 z-30">
                     <HoverGridOverlay enabled={clickable} />
                   </div>
-
-                  {overlay ? <div className="absolute inset-x-0 bottom-0 p-7 z-30">{overlay}</div> : null}
                 </div>
               </div>
             </div>

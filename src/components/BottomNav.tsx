@@ -23,11 +23,13 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
     const navRef = React.useRef<HTMLElement | null>(null)
     const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
-    const [indicator, setIndicator] = React.useState<{ left: number; width: number; visible: boolean }>({
-        left: 0,
-        width: 0,
-        visible: false,
-    })
+    const [indicator, setIndicator] = React.useState<{ left: number; width: number; visible: boolean }>(
+        {
+            left: 0,
+            width: 0,
+            visible: false,
+        }
+    )
 
     const updateIndicator = React.useCallback(() => {
         const navEl = navRef.current
@@ -48,15 +50,15 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
         const navRect = navEl.getBoundingClientRect()
         const itemRect = activeEl.getBoundingClientRect()
 
-        // ✅ Underline sizing + centering tweaks
-        const UNDERLINE_INSET = 18 // px (try 12–28)
-
-        const left = itemRect.left - navRect.left + UNDERLINE_INSET
-        const width = Math.max(12, itemRect.width - UNDERLINE_INSET * 2)
+        // ✅ Stable underline: constant width, centered under active item (no min-width / fixed item widths needed)
+        const isMobile = window.innerWidth < 640
+        const LINE_W = isMobile ? 28 : 36 // tweak to taste
+        const centerX = itemRect.left - navRect.left + itemRect.width / 2
+        const left = centerX - LINE_W / 2
 
         setIndicator({
             left,
-            width,
+            width: LINE_W,
             visible: true,
         })
     }, [location.pathname])
@@ -67,19 +69,27 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
 
     React.useEffect(() => {
         // Keep it correct on resize / font load / layout shifts
-        const onResize = () => updateIndicator()
+        // ✅ Throttle to animation frame to reduce mobile "resize jitter"
+        let raf: number | null = null
+        const schedule = () => {
+            if (raf) cancelAnimationFrame(raf)
+            raf = requestAnimationFrame(() => updateIndicator())
+        }
+
+        const onResize = () => schedule()
         window.addEventListener('resize', onResize)
 
         const navEl = navRef.current
         let ro: ResizeObserver | null = null
         if (navEl && 'ResizeObserver' in window) {
-            ro = new ResizeObserver(() => updateIndicator())
+            ro = new ResizeObserver(() => schedule())
             ro.observe(navEl)
         }
 
         return () => {
             window.removeEventListener('resize', onResize)
             ro?.disconnect()
+            if (raf) cancelAnimationFrame(raf)
         }
     }, [updateIndicator])
 
@@ -210,8 +220,6 @@ function NavItem({
                         gap-0.5
                         text-xs
                         select-none
-
-                        min-w-[75px]
                         text-center
 
                         transition-all

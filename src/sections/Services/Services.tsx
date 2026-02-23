@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { SnapSection } from "../../components/SnapSection2";
+import { useDeviceTier } from "../../hooks/useDeviceTier";
 
 import { PreviewFrame } from "./PreviewFrame";
 
@@ -60,7 +61,6 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
             {/* ✅ DESKTOP */}
             <div className="hidden lg:block w-full">
                 <div className="relative flex w-full items-center py-16 md:py-0">
-                    {/* ✅ prevent whole grid from re-centering when right column changes height */}
                     <div className="grid w-full grid-cols-12 items-start gap-y-14 md:gap-x-16">
                         <div className="col-span-12 md:col-span-6">
                             <div className="flex w-full justify-center md:justify-start">
@@ -69,7 +69,6 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
                         </div>
 
                         <div className="col-span-12 md:col-span-6">
-                            {/* ✅ smooth shared layout context */}
                             <LayoutGroup id="services-desktop">
                                 <motion.div
                                     layout
@@ -107,10 +106,12 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
             <div className="lg:hidden h-full w-full">
                 <div className="h-full w-full px-6 py-10">
                     <div className="mb-8">
-                        <div className="text-[11px] tracking-[0.34em] text-white/55 uppercase">001 — Services</div>
+                        <div className="text-[11px] tracking-[0.34em] text-white/55 uppercase">
+                            001 — Services
+                        </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="mx-auto w-full max-w-[560px] space-y-3">
                         {SERVICES.map((s, idx) => (
                             <SnapSection.Slide key={s.id} id={`services:${s.id}`} order={idx}>
                                 <ServiceRow
@@ -139,11 +140,33 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
 function ServiceIcon({ type, active }: { type: ServiceId; active: boolean }) {
     const baseColor = type === "websites" ? "#ff2a2a" : type === "tools" ? "#22c55e" : "#a855f7";
 
+    // ✅ float + glow pulse (sinusoidal-like loop)
+    const floatAnim = {
+        y: [0, -8, 0, 6, 0],
+        rotate: [0, -1.2, 0, 1.2, 0],
+    };
+    const glowAnim = {
+        opacity: active ? [0.35, 0.6, 0.35] : [0.22, 0.35, 0.22],
+        scale: active ? [1.05, 1.18, 1.05] : [1.0, 1.1, 1.0],
+    };
+
     return (
-        <div className="relative h-20 w-20">
+        <motion.div
+            className="relative h-20 w-20"
+            animate={floatAnim}
+            transition={{
+                duration: 4.8,
+                ease: "easeInOut",
+                repeat: Infinity,
+            }}
+        >
             <motion.div
-                animate={{ scale: active ? 1.2 : 1, opacity: active ? 0.55 : 0.28 }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                animate={glowAnim}
+                transition={{
+                    duration: 3.4,
+                    ease: "easeInOut",
+                    repeat: Infinity,
+                }}
                 className="absolute inset-0 rounded-full blur-2xl"
                 style={{ background: baseColor }}
             />
@@ -188,7 +211,7 @@ function ServiceIcon({ type, active }: { type: ServiceId; active: boolean }) {
                     <div className="absolute h-4 w-4 rounded-sm bg-white/35" />
                 </motion.div>
             )}
-        </div>
+        </motion.div>
     );
 }
 
@@ -220,6 +243,27 @@ function ServiceRow({
     const isMobile = mode === "mobile";
     const showMore = isMobile || expanded;
 
+    // ✅ reuse global tier logic
+    const { bigMobile } = useDeviceTier();
+
+    // ✅ scale a few things up on larger phones (>= 390px)
+    const titleSizeMobile = bigMobile ? "text-[36px]" : "text-[32px]";
+    const descSizeMobile = bigMobile ? "text-[20px]" : "text-[16px]";
+    const pillTextMobile = bigMobile ? "text-[12px]" : "text-[9px]";
+    const btnTextMobile = bigMobile ? "text-[11px]" : "text-[10px]";
+    const iconScaleMobile = bigMobile ? "scale-[0.88]" : "scale-[0.80]";
+
+    // ✅ spacing scale on larger phones (>= 390px)
+    const padMobile = bigMobile ? "px-7 py-7" : "px-6 py-6";
+    const gridGapMobile = bigMobile ? "gap-5" : "gap-4";
+    const headerGapMobile = bigMobile ? "gap-5" : "gap-4";
+    const titleMtMobile = bigMobile ? "mt-4" : "mt-3";
+    const descMtMobile = bigMobile ? "mt-3" : "mt-2";
+    const morePtMobile = bigMobile ? "pt-5" : "pt-4";
+    const pillsGapMobile = bigMobile ? "gap-3" : "gap-2";
+    const btnRowMtMobile = bigMobile ? "mt-6" : "mt-5";
+    const btnGapMobile = bigMobile ? "gap-4" : "gap-3";
+
     const onKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -235,37 +279,46 @@ function ServiceRow({
     const tone = active ? "selected" : "unselected";
 
     const surfaceClass =
-        tone === "selected"
-            ? "bg-[#ff2a2a]"
-            : "bg-neutral-900/70 dark:bg-neutral-900/70 bg-white/85";
+        tone === "selected" ? "bg-[#ff2a2a]" : "bg-neutral-900/70 dark:bg-neutral-900/70 bg-white/85";
 
     const textPrimaryClass = tone === "selected" ? "text-white" : "text-neutral-900 dark:text-white";
     const textSecondaryClass = tone === "selected" ? "text-white/90" : "text-neutral-700 dark:text-white/90";
 
     const gridOpacity = tone === "selected" ? 0.9 : 1;
 
-    // ✅ base shadow stays as you had it
     const baseShadow = isHighlighted
         ? "0 26px 90px rgba(255, 30, 30, 0.28)"
         : "0 22px 60px rgba(0, 0, 0, 0.16)";
 
-    // ✅ hover shadow: tighter + slightly more present
     const hoverShadow =
-        tone === "selected"
-            ? "0 18px 70px rgba(255, 30, 30, 0.30)"
-            : "0 18px 58px rgba(0, 0, 0, 0.22)";
+        tone === "selected" ? "0 18px 70px rgba(255, 30, 30, 0.30)" : "0 18px 58px rgba(0, 0, 0, 0.22)";
 
-    // ✅ point (2): inactive depth — subtle inner highlight + micro bevel
     const inactiveInnerHighlight =
         "radial-gradient(circle at 22% 10%, rgba(255,255,255,0.22), transparent 52%)," +
         "linear-gradient(180deg, rgba(255,255,255,0.10), transparent 34%)," +
         "radial-gradient(circle at 88% 78%, rgba(0,0,0,0.14), transparent 60%)";
 
-    // ✅ point (3): hover micro-interactions — gentle glow + shimmer
     const hoverGlow =
         tone === "selected"
             ? "radial-gradient(circle at 18% 0%, rgba(255,255,255,0.18), transparent 55%)"
             : "radial-gradient(circle at 18% 0%, rgba(255,255,255,0.14), transparent 58%)";
+
+    const majorGridLightUnselected = `
+        linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
+    `;
+    const minorGridLightUnselected = `
+        linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)
+    `;
+    const majorGridWhite = `
+        linear-gradient(to right, rgba(255,255,255,0.14) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.14) 1px, transparent 1px)
+    `;
+    const minorGridWhite = `
+        linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)
+    `;
 
     return (
         <motion.div
@@ -284,7 +337,6 @@ function ServiceRow({
                 boxShadow: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
                 transform: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
             }}
-            // ✅ subtle lift + tiny scale (desktop only)
             whileHover={
                 isMobile
                     ? undefined
@@ -296,12 +348,11 @@ function ServiceRow({
             }
             whileTap={isMobile ? undefined : { scale: 0.995, y: -1 }}
             className={[
-                // ✅ add "group" so group-hover works
                 "group relative w-full cursor-pointer select-none overflow-hidden",
                 "rounded-2xl",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25 dark:focus-visible:ring-white/25 focus-visible:ring-black/20",
-                "h-[calc(100svh-10rem)] md:h-auto",
-                "px-7 py-7",
+                isMobile ? "h-auto" : "h-[calc(100svh-10rem)] md:h-auto",
+                isMobile ? padMobile : "px-7 py-7",
                 "transform-gpu will-change-transform",
             ].join(" ")}
             style={{ boxShadow: baseShadow }}
@@ -309,7 +360,7 @@ function ServiceRow({
             {/* BASE SURFACE */}
             <div aria-hidden className={["absolute inset-0 transition-colors duration-300", surfaceClass].join(" ")} />
 
-            {/* ✅ (2) Inactive depth: inner highlight/bevel layer (only when unselected) */}
+            {/* Inactive depth */}
             {tone !== "selected" && (
                 <div
                     aria-hidden
@@ -321,7 +372,7 @@ function ServiceRow({
                 />
             )}
 
-            {/* ✅ (2) Micro edge/bezel: subtle inset stroke (always, slightly stronger on hover) */}
+            {/* Micro edge/bezel */}
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300 opacity-70 group-hover:opacity-100"
@@ -333,39 +384,92 @@ function ServiceRow({
                 }}
             />
 
-            {/* GRID */}
+            {/* GRID (major) */}
             <motion.div
                 aria-hidden
                 className="absolute inset-0"
                 style={{
-                    backgroundImage: `
-                        linear-gradient(to right, rgba(255,255,255,0.14) 1px, transparent 1px),
-                        linear-gradient(to bottom, rgba(255,255,255,0.14) 1px, transparent 1px)
-                    `,
+                    backgroundImage: tone === "selected" ? majorGridWhite : undefined,
                     backgroundSize: "28px 28px",
                     opacity: gridOpacity,
                     mixBlendMode: tone === "selected" ? "normal" : "multiply",
                 }}
-                // ✅ (3) grid breath on hover (tiny)
                 whileHover={isMobile ? undefined : { opacity: tone === "selected" ? 0.56 : 0.28 }}
                 transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
             />
 
-            <motion.div
-                aria-hidden
-                className="absolute inset-0"
-                style={{
-                    backgroundImage: `
-                        linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
-                        linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)
-                    `,
-                    backgroundSize: "7px 7px",
-                    opacity: tone === "selected" ? 0.22 : 0.1,
-                    mixBlendMode: tone === "selected" ? "normal" : "multiply",
-                }}
-                whileHover={isMobile ? undefined : { opacity: tone === "selected" ? 0.28 : 0.14 }}
-                transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
-            />
+            {/* Major grid for UNSELECTED only: light vs dark */}
+            {tone !== "selected" && (
+                <>
+                    <motion.div
+                        aria-hidden
+                        className="absolute inset-0 dark:hidden"
+                        style={{
+                            backgroundImage: majorGridLightUnselected,
+                            backgroundSize: "28px 28px",
+                            opacity: gridOpacity,
+                            mixBlendMode: "multiply",
+                        }}
+                        whileHover={isMobile ? undefined : { opacity: 0.28 }}
+                        transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                    <motion.div
+                        aria-hidden
+                        className="absolute inset-0 hidden dark:block"
+                        style={{
+                            backgroundImage: majorGridWhite,
+                            backgroundSize: "28px 28px",
+                            opacity: gridOpacity,
+                            mixBlendMode: "multiply",
+                        }}
+                        whileHover={isMobile ? undefined : { opacity: 0.28 }}
+                        transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                </>
+            )}
+
+            {/* GRID (minor) */}
+            {tone === "selected" ? (
+                <motion.div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{
+                        backgroundImage: minorGridWhite,
+                        backgroundSize: "7px 7px",
+                        opacity: 0.22,
+                        mixBlendMode: "normal",
+                    }}
+                    whileHover={isMobile ? undefined : { opacity: 0.28 }}
+                    transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                />
+            ) : (
+                <>
+                    <motion.div
+                        aria-hidden
+                        className="absolute inset-0 dark:hidden"
+                        style={{
+                            backgroundImage: minorGridLightUnselected,
+                            backgroundSize: "7px 7px",
+                            opacity: 0.1,
+                            mixBlendMode: "multiply",
+                        }}
+                        whileHover={isMobile ? undefined : { opacity: 0.14 }}
+                        transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                    <motion.div
+                        aria-hidden
+                        className="absolute inset-0 hidden dark:block"
+                        style={{
+                            backgroundImage: minorGridWhite,
+                            backgroundSize: "7px 7px",
+                            opacity: 0.1,
+                            mixBlendMode: "multiply",
+                        }}
+                        whileHover={isMobile ? undefined : { opacity: 0.14 }}
+                        transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                </>
+            )}
 
             {/* RADIAL LIGHT */}
             <motion.div
@@ -388,7 +492,7 @@ function ServiceRow({
                 }}
             />
 
-            {/* ✅ (3) Hover glow wash (very subtle, makes the card feel “alive”) */}
+            {/* Hover glow wash (desktop only) */}
             {!isMobile && (
                 <motion.div
                     aria-hidden
@@ -402,7 +506,7 @@ function ServiceRow({
                 />
             )}
 
-            {/* ✅ (3) Highlight sweep / shimmer (super subtle) */}
+            {/* Highlight sweep / shimmer (desktop only) */}
             {!isMobile && (
                 <motion.div
                     aria-hidden
@@ -418,49 +522,111 @@ function ServiceRow({
                 />
             )}
 
-            {/* ✅ (3) Tiny icon micro-pop on hover (purely visual) */}
-            <div className="relative z-[1]">
-                <div className="flex items-start justify-between gap-6">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-4">
+            {/* CONTENT */}
+            <div className={["relative z-[1]", isMobile ? "flex h-full flex-col" : ""].join(" ")}>
+                {isMobile ? (
+                    // ✅ MOBILE: explicit grid items (no contents)
+                    <div className={`grid grid-cols-[1fr_auto] ${gridGapMobile} items-start`}>
+                        {/* left (index + title) */}
+                        <div className="min-w-49">
+                            <div className={`flex items-center ${headerGapMobile}`}>
+                                <div
+                                    className={[
+                                        "text-[13px] tracking-[0.24em] shrink-0",
+                                        tone === "selected" ? "text-white/90" : "text-neutral-600 dark:text-white/90",
+                                    ].join(" ")}
+                                >
+                                    {index}
+                                </div>
+                                <div
+                                    className={[
+                                        "h-px flex-1 max-w-[64px]",
+                                        tone === "selected" ? "bg-white/30" : "bg-neutral-900/15 dark:bg-white/30",
+                                    ].join(" ")}
+                                />
+                            </div>
+
                             <div
                                 className={[
-                                    "text-[13px] tracking-[0.24em]",
-                                    tone === "selected" ? "text-white/90" : "text-neutral-600 dark:text-white/90",
+                                    `${titleMtMobile} ${titleSizeMobile} sm:text-[38px] font-semibold tracking-[-0.02em] leading-10`,
+                                    textPrimaryClass,
+                                    "break-words",
                                 ].join(" ")}
                             >
-                                {index}
+                                {label}
                             </div>
-                            <div
-                                className={[
-                                    "h-px flex-1 max-w-[64px]",
-                                    tone === "selected" ? "bg-white/30" : "bg-neutral-900/15 dark:bg-white/30",
-                                ].join(" ")}
-                            />
                         </div>
 
+                        {/* icon (top right) */}
+                        <motion.div
+                            className="flex-shrink-0"
+                            transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.9 }}
+                        >
+                            <div className={`${iconScaleMobile} origin-top-right`}>
+                                <ServiceIcon type={serviceId} active={isHighlighted} />
+                            </div>
+                        </motion.div>
+
+                        {/* desc full width */}
                         <div
                             className={[
-                                "mt-3 text-[36px] sm:text-[42px] md:text-[40px] font-semibold tracking-[-0.02em]",
-                                textPrimaryClass,
+                                `col-span-2 ${descMtMobile} ${descSizeMobile} sm:text-[18px] leading-relaxed`,
+                                textSecondaryClass,
                             ].join(" ")}
                         >
-                            {label}
-                        </div>
-
-                        <div className={["mt-2 max-w-[560px] text-[16px] leading-relaxed", textSecondaryClass].join(" ")}>
                             {desc}
                         </div>
                     </div>
+                ) : (
+                    // ✅ DESKTOP: keep your original structure
+                    <div className="flex items-start justify-between gap-6">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-4">
+                                <div
+                                    className={[
+                                        "text-[13px] tracking-[0.24em] shrink-0",
+                                        tone === "selected" ? "text-white/90" : "text-neutral-600 dark:text-white/90",
+                                    ].join(" ")}
+                                >
+                                    {index}
+                                </div>
+                                <div
+                                    className={[
+                                        "h-px flex-1 max-w-[64px]",
+                                        tone === "selected" ? "bg-white/30" : "bg-neutral-900/15 dark:bg-white/30",
+                                    ].join(" ")}
+                                />
+                            </div>
 
-                    <motion.div
-                        className="hidden sm:block"
-                        whileHover={isMobile ? undefined : { y: -1, scale: 1.03 }}
-                        transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.9 }}
-                    >
-                        <ServiceIcon type={serviceId} active={isHighlighted} />
-                    </motion.div>
-                </div>
+                            <div
+                                className={[
+                                    "mt-3 text-[36px] sm:text-[42px] md:text-[40px] font-semibold tracking-[-0.02em]",
+                                    textPrimaryClass,
+                                    "break-words",
+                                ].join(" ")}
+                            >
+                                {label}
+                            </div>
+
+                            <div
+                                className={[
+                                    "mt-2 max-w-[560px] text-[16px] leading-relaxed",
+                                    textSecondaryClass,
+                                ].join(" ")}
+                            >
+                                {desc}
+                            </div>
+                        </div>
+
+                        <motion.div
+                            className="flex-shrink-0"
+                            whileHover={{ y: -1, scale: 1.03 }}
+                            transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.9 }}
+                        >
+                            <ServiceIcon type={serviceId} active={isHighlighted} />
+                        </motion.div>
+                    </div>
+                )}
 
                 <AnimatePresence initial={false}>
                     {showMore && (
@@ -475,15 +641,25 @@ function ServiceRow({
                             }}
                             className="overflow-hidden"
                         >
-                            <div className="pt-6">
-                                <div className="flex flex-wrap gap-2">
+                            <div className={isMobile ? morePtMobile : "pt-6"}>
+                                <div
+                                    className={[
+                                        "flex items-center",
+                                        isMobile
+                                            ? `${pillsGapMobile} flex-wrap `
+                                            : "flex-wrap gap-2",
+                                    ].join(" ")}
+                                >
                                     {meta.map((m) => (
                                         <span
                                             key={m}
                                             className={[
-                                                "inline-flex items-center",
-                                                "h-9 px-4 rounded-full",
-                                                "text-[11px] tracking-[0.24em] uppercase",
+                                                "inline-flex items-center whitespace-nowrap",
+                                                isMobile ? "h-7 px-3 rounded-full" : "h-9 px-4 rounded-full",
+                                                isMobile
+                                                    ? `${pillTextMobile} tracking-[0.22em]`
+                                                    : "text-[11px] tracking-[0.24em]",
+                                                "uppercase",
                                                 tone === "selected"
                                                     ? "bg-white/12 text-white/95"
                                                     : "bg-black/5 text-neutral-900/90 dark:bg-white/12 dark:text-white/95",
@@ -495,16 +671,25 @@ function ServiceRow({
                                     ))}
                                 </div>
 
-                                <div className="mt-5 flex flex-wrap items-center gap-3">
+                                <div
+                                    className={[
+                                        `${btnRowMtMobile} flex items-center`,
+                                        isMobile ? `flex-nowrap ${btnGapMobile}` : "flex-wrap gap-3",
+                                    ].join(" ")}
+                                >
                                     <button
                                         type="button"
                                         onClick={(e) => e.stopPropagation()}
                                         className={[
-                                            "h-11 px-5 rounded-full text-[11px] tracking-[0.26em] uppercase",
+                                            isMobile ? "h-10 px-4" : "h-11 px-5",
+                                            isMobile
+                                                ? `${btnTextMobile} tracking-[0.24em]`
+                                                : "text-[11px] tracking-[0.26em]",
+                                            "rounded-full uppercase",
                                             tone === "selected"
                                                 ? "bg-white/14 text-white hover:bg-white/18"
                                                 : "bg-black/5 text-neutral-900 hover:bg-black/10 dark:bg-white/14 dark:text-white dark:hover:bg-white/18",
-                                            "active:scale-[0.98] transition",
+                                            "active:scale-[0.98] transition whitespace-nowrap",
                                         ].join(" ")}
                                     >
                                         Learn more
@@ -514,11 +699,15 @@ function ServiceRow({
                                         type="button"
                                         onClick={(e) => e.stopPropagation()}
                                         className={[
-                                            "h-11 px-5 rounded-full text-[11px] tracking-[0.26em] uppercase",
+                                            isMobile ? "h-10 px-4" : "h-11 px-5",
+                                            isMobile
+                                                ? `${btnTextMobile} tracking-[0.24em]`
+                                                : "text-[11px] tracking-[0.26em]",
+                                            "rounded-full uppercase",
                                             tone === "selected"
                                                 ? "bg-white text-neutral-900 hover:bg-white/90 shadow-sm"
                                                 : "bg-neutral-900 text-white hover:bg-neutral-900/90 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 shadow-sm",
-                                            "active:scale-[0.98] transition",
+                                            "active:scale-[0.98] transition whitespace-nowrap",
                                         ].join(" ")}
                                     >
                                         View cases →
@@ -532,5 +721,3 @@ function ServiceRow({
         </motion.div>
     );
 }
-
-

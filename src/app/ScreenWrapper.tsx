@@ -223,36 +223,7 @@ export function ScreenWrapper({ children }: { children: ReactNode }) {
         };
     }, []);
 
-    // ✅ IntersectionObserver for URL hash + state
-    useEffect(() => {
-        const container = ref.current;
-        if (!container) return;
 
-        const sections = container.querySelectorAll<HTMLElement>("[data-section]");
-        if (!sections.length) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const visible = entries
-                    .filter((e) => e.isIntersecting)
-                    .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-                if (!visible) return;
-
-                const id = visible.target.getAttribute("data-section");
-                if (!id) return;
-                if (activeSectionRef.current === id) return;
-
-                activeSectionRef.current = id;
-                setLastSection(location.pathname, id);
-                window.history.replaceState(null, "", `${location.pathname}#${id}`);
-            },
-            { root: container, threshold: 0.6 }
-        );
-
-        sections.forEach((s) => observer.observe(s));
-        return () => observer.disconnect();
-    }, [location.pathname, setLastSection]);
 
     function GlobalBackground() {
         return (

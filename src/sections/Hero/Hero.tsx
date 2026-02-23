@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { SnapSection } from "../../components/SnapSection2";
 
 // ⬇️ TYPING COMPONENT (bigger, cleaner, premium)
-function TypingTitle() {
+function TypingTitle({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
     const words = ["INNOVATION", "DIGITALITÄT", "AUTOMATION", "KREATIVITÄT", "PRÄZISION"];
     const [index, setIndex] = useState(0);
     const [subIndex, setSubIndex] = useState(0);
@@ -34,26 +34,30 @@ function TypingTitle() {
         return () => window.clearInterval(cursor);
     }, []);
 
+    const isMobile = variant === "mobile";
+
     return (
         <div className="select-none">
             <span
                 dir="ltr"
-                className="
+                className={`
           inline-flex items-baseline
           font-light
-          tracking-[0.06em]
           text-neutral-900
           dark:text-white/95
-          text-[42px] sm:text-[54px] md:text-[55px] xl:text-[40px]
           tracking-[0.08em]
           leading-[0.95]
-        "
+          ${isMobile
+                        ? "text-[30px] sm:text-[38px]"
+                        : "text-[42px] sm:text-[54px] md:text-[55px] xl:text-[40px]"
+                    }
+        `}
             >
                 {words[index].substring(0, subIndex)}
                 <span
                     className={`ml-2 inline-block ${blink ? "opacity-100" : "opacity-0"} transition-opacity duration-150`}
                     style={{
-                        width: "10px",
+                        width: isMobile ? "8px" : "10px",
                         height: "0.95em",
                         background: "rgba(255, 26, 26, 0.95)",
                         boxShadow: "0 0 18px rgba(255,26,26,0.55)",
@@ -65,13 +69,56 @@ function TypingTitle() {
     );
 }
 
+/** ✅ Reusable "right" content block (rendered under H1 on mobile, right column on md+) */
+function HeroRightBlock({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
+    const isMobile = variant === "mobile";
+
+    return (
+        <div className="w-full">
+            <div className={`md:ml-auto w-full max-w-[360px] ${isMobile ? "text-base sm:text-lg" : "text-xl"}`}>
+                <TypingTitle variant={variant} />
+
+                <div
+                    className={`
+                      mt-7
+                      grid grid-cols-2
+                      ${isMobile
+                            ? "gap-x-8 gap-y-2 text-[12px] sm:text-[13px] tracking-[0.20em]"
+                            : "gap-x-10 gap-y-3 text-[15px] tracking-[0.22em]"
+                        }
+                      text-neutral-700
+                      dark:text-white/45
+                    `}
+                >
+                    {[
+                        "WEBSITES",
+                        "WEBAPPS",
+                        "CRM SYSTEME",
+                        "ADMIN TOOLS",
+                        "BRANDING",
+                        "UX/UI DESIGN",
+                        "AUTOMATION",
+                        "CONSULTING",
+                    ].map((t) => (
+                        <div key={t} className="leading-none uppercase">
+                            {t}
+                        </div>
+                    ))}
+                </div>
+
+
+            </div>
+        </div>
+    );
+}
+
 // ⬇️ MAIN HERO SECTION (flex layout)
 export function Hero() {
     return (
         <SnapSection
             sectionId="hero"
             className="
-        relative h-[100svh] overflow-hidden hero
+        relative overflow-hidden hero
         text-neutral-900
         dark:text-white
       "
@@ -83,27 +130,29 @@ export function Hero() {
                     {/* <HeroCanvas /> */}
 
                     {/* content wrapper */}
-                    <div className="relative z-[2] mx-auto h-[100svh] max-w-[1600px] px-6 sm:px-10 lg:px-16">
+                    <div className="relative z-[2] mx-auto h-[100svh] max-w-[1600px]  sm:px-10 lg:px-16">
                         {/* ✅ FLEX instead of grid */}
                         <div
                             className="
-                h-full
-                flex flex-col
-                justify-center
-                gap-y-14
-                md:flex-row
-                md:items-center
-                md:justify-between
-                md:gap-y-0
-                md:gap-x-14
-              "
+                                h-full
+                                flex flex-col
+                                justify-center
+                                gap-y-14
+                                pb-20
+                                sm:pb-0
+                                md:flex-row
+                                md:items-center
+                                md:justify-between
+                                md:gap-y-0
+                                md:gap-x-14
+                                "
                         >
                             {/* LEFT */}
                             <div className="w-full md:w-[50%] max-w-[640px]">
                                 <div className="space-y-5">
                                     <h1
                                         className="
-                      text-[54px] sm:text-[64px] lg:text-[70px]
+                      text-[50px] sm:text-[64px] lg:text-[70px]
                       leading-[0.92]
                       text-neutral-900
                       dark:text-white
@@ -111,6 +160,11 @@ export function Hero() {
                                     >
                                         Digital Experiences for Ambitious Brands.
                                     </h1>
+
+                                    {/* ✅ MOBILE: render typing + services right after H1 */}
+                                    <div className="block md:hidden pt-0">
+                                        <HeroRightBlock variant="mobile" />
+                                    </div>
 
                                     <div className="flex items-center gap-3 pt-3">
                                         {/* Primary CTA */}
@@ -169,50 +223,9 @@ export function Hero() {
                             {/* CENTER spacer (keeps 3D focus area) */}
                             <div className="hidden md:block md:flex-[0.5]" />
 
-                            {/* RIGHT */}
-                            <div className="w-full md:w-[28%]">
-                                <div className="md:ml-auto w-full max-w-[360px] text-xl">
-                                    <TypingTitle />
-
-                                    <div
-                                        className="
-                      mt-10
-                      grid grid-cols-2
-                      gap-x-10 gap-y-3
-                      text-[15px]
-                      tracking-[0.22em]
-                      text-neutral-700
-                      dark:text-white/45
-                    "
-                                    >
-                                        {[
-                                            "WEBSITES",
-                                            "WEBAPPS",
-                                            "CRM SYSTEME",
-                                            "ADMIN TOOLS",
-                                            "BRANDING",
-                                            "UX/UI DESIGN",
-                                            "AUTOMATION",
-                                            "CONSULTING",
-                                        ].map((t) => (
-                                            <div key={t} className="leading-none uppercase">
-                                                {t}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div
-                                        className="
-                      mt-10
-                      text-[11px]
-                      tracking-[0.26em]
-                      text-neutral-500
-                      dark:text-white/45
-                    "
-                                    >
-                                        BASED IN SWITZERLAND · BUILT FOR SCALE
-                                    </div>
-                                </div>
+                            {/* RIGHT (desktop only now) */}
+                            <div className="hidden md:block md:w-[28%]">
+                                <HeroRightBlock variant="desktop" />
                             </div>
                         </div>
 

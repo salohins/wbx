@@ -74,7 +74,6 @@ function ProjectCard({ project, accent }: { project: Project; accent: string }) 
         <div className="hidden lg:block lg:col-span-8 lg:-mt-2">
           <div className="w-full h-auto overflow-visible">
             <div className="relative overflow-visible">
-              {/* ✅ removed outer floatY animation + removed blurred highlight */}
               <DesktopMonitorFrame
                 videoSrc={project.desktopVideoSrc}
                 videoPoster={project.desktopVideoPoster}
@@ -91,11 +90,11 @@ function ProjectCard({ project, accent }: { project: Project; accent: string }) 
 
         {/* Right (Phone) — visible on mobile + desktop */}
         <div className="lg:col-span-4 lg:mt-10 overflow-visible">
+          {/* ✅ Slide 1: phone preview */}
           <SnapSection.Slide id={`${project.id}:mobile`} order={0}>
             <div className="w-full min-w-0 overflow-visible flex justify-center lg:block">
               <div className="w-[min(340px,100%)] min-w-0 overflow-visible">
                 <div className="relative overflow-visible">
-                  {/* ✅ removed outer floatY2 animation + removed blurred highlight */}
                   <MobilePhoneFrame
                     videoSrc={project.mobileVideoSrc}
                     videoPoster={project.mobileVideoPoster}
@@ -105,18 +104,30 @@ function ProjectCard({ project, accent }: { project: Project; accent: string }) 
                     accent={accent}
                     href={primaryHref}
                     statusVariant="light"
-                    overlay={<MobileOverlay project={project} />}
+                  // ✅ overlay removed — overlay is now its own slide
                   />
                 </div>
               </div>
             </div>
+          </SnapSection.Slide>
+
+          {/* ✅ Slide 2 (MOBILE ONLY): full-screen overlay */}
+          <SnapSection.Slide id={`${project.id}:overlay`} order={1}>
+            {/* SnapSection mobile wrapper applies px-5; cancel it so the slide can be full-width */}
+            <div className="lg:hidden h-full w-[calc(100%+40px)] -mx-5 flex items-center justify-center">
+              <div className="w-full max-w-[520px] px-5">
+                <MobileOverlay project={project} />
+              </div>
+            </div>
+
+            {/* Desktop: don't show this slide content (desktop doesn't render slides anyway, but keep it safe) */}
+            <div className="hidden lg:block" />
           </SnapSection.Slide>
         </div>
       </div>
 
       <div className="pointer-events-none mt-12 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      {/* keep only shine keyframes (no float keyframes anymore) */}
       <style>{`
         @keyframes shine {
           0% { transform: translateX(-60%); }
@@ -138,7 +149,6 @@ function MobileOverlay({ project }: { project: Project }) {
   const primary = project.links?.[0];
 
   return (
-    // ✅ removed backdrop-blur-md (perf win)
     <div className="lg:hidden rounded-2xl border border-white/10 bg-black/45 p-3">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
@@ -179,8 +189,6 @@ function MobileOverlay({ project }: { project: Project }) {
 function TagPill({ label, small }: { label: string; small?: boolean }) {
   const scheme = getTagScheme(label);
   const cls = small ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs";
-
-  // ✅ removed backdrop-blur-md (perf win)
   return <span className={["inline-flex items-center rounded-full border", cls, scheme].join(" ")}>{label}</span>;
 }
 

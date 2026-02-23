@@ -17,3 +17,8 @@
     transition-timing-function: ease-in-out;
   }
 }
+
+html,
+body {
+  overflow-x: hidden;
+}
