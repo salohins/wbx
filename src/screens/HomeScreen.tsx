@@ -50,23 +50,22 @@ export function HomeScreen() {
 
     return (
         <div className="absolute inset-0 h-full">
-            <div className="pointer-events-none fixed inset-0 z--1 ">
-                <HeroCanvas />
-            </div>
+
 
             <Hero />
             <Services />
 
-            {/* ✅ Project 1 = its own section */}
+
             <ProjectSnapSection
                 sectionId="project-tb-bau"
                 title={(sections as any).projects ?? 'Projects'}
                 subtitle={(sections as any).projectsSubtitle ?? 'Selected builds — premium, fast, scalable.'}
                 project={TB_BAU}
+                accent="rgba(255, 120, 30, 1)"
                 desktopAlign="center"
             />
 
-            {/* ✅ Project 2 = its own section */}
+
             <ProjectSnapSection
                 sectionId="project-zimmermann"
                 title={(sections as any).projects ?? 'Projects'}
@@ -75,7 +74,7 @@ export function HomeScreen() {
                 desktopAlign="center"
             />
 
-            {/* CTA */}
+
             <SnapSection
                 sectionId="cta"
                 backgroundScope="boxed"
@@ -101,6 +100,7 @@ export function HomeScreen() {
                     </div>
                 </div>
             </SnapSection>
+
         </div>
     )
 }

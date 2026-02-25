@@ -25,13 +25,11 @@ function getDeviceTier() {
   const memory = nav.deviceMemory ?? 4; // GB (may be undefined)
   const dpr = window.devicePixelRatio ?? 1;
 
-  // “very low” bucket for old / budget laptops
   const veryLow =
     (memory && memory <= 4) ||
     cores <= 4 ||
     (dpr >= 2 && memory && memory <= 6);
 
-  // medium bucket (optional)
   const medium =
     !veryLow && ((memory && memory <= 8) || cores <= 6);
 
@@ -60,7 +58,6 @@ function useFpsDegrade(enabled: boolean) {
         state.current.frames = 0;
         state.current.last = now;
 
-        // If sustained low FPS, degrade
         if (fps < 45) setForceLow(true);
       }
 
@@ -101,7 +98,6 @@ function useRadialGlowTexture(size: number) {
 }
 
 function BottomRedGlow({ groupRef, quality }: { groupRef: React.RefObject<THREE.Group>; quality: "high" | "mid" | "low" }) {
-  // smaller texture on low
   useRadialGlowTexture(quality === "low" ? 128 : quality === "mid" ? 192 : 256);
 
   const { camera, viewport } = useThree();
@@ -146,7 +142,6 @@ function FXBackground({ quality }: { quality: "high" | "mid" | "low" }) {
     return g;
   }, [quality]);
 
-  // ✅ update less often on low (every 2 frames)
   const frameSkip = quality === "low" ? 2 : 1;
   const frameCount = useRef(0);
 
@@ -176,31 +171,6 @@ function FXBackground({ quality }: { quality: "high" | "mid" | "low" }) {
 }
 
 /* ------------------------------------------------------------------
-   FPS CAP (30fps on low)
------------------------------------------------------------------- */
-function FpsLimiter({ enabled, fps }: { enabled: boolean; fps: number }) {
-  const acc = useRef(0);
-
-  useFrame((_, delta) => {
-    if (!enabled) return;
-
-    acc.current += delta;
-    const frameTime = 1 / fps;
-
-    // If we haven't reached the next frame window, skip rendering updates
-    if (acc.current < frameTime) {
-      // Tell R3F to not advance animations in this frame by early returning
-      return;
-    }
-
-    // Keep remainder for stable pacing
-    acc.current = acc.current % frameTime;
-  }, 1000);
-
-  return null;
-}
-
-/* ------------------------------------------------------------------
    MAIN
 ------------------------------------------------------------------ */
 export function HeroCanvas() {
@@ -214,19 +184,71 @@ export function HeroCanvas() {
     return getDeviceTier() as any;
   }, []);
 
-  // ✅ auto-degrade if FPS tanks (optional but very effective)
   const forceLow = useFpsDegrade(true);
   const quality: "high" | "mid" | "low" = forceLow ? "low" : initialTier;
 
-  // ✅ more aggressive DPR scaling
-  // low: render below native res
   const dpr = quality === "low" ? 0.75 : quality === "mid" ? 1 : 1.5;
 
   useEffect(() => {
     let cleanup: (() => void) | null = null;
     let raf = 0;
 
-    const tryAttach = () => {
+    // Cache sections from the real DOM (works on desktop AND mobile slider)
+    const readSectionsFromDocument = () => {
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-section]"));
+      return nodes.map((el) => ({
+        el,
+        id: el.getAttribute("data-section") || "unknown",
+      }));
+    };
+
+    // ✅ Virtual pose from progress (mobile slider)
+    const attachVirtual = () => {
+      let sections = readSectionsFromDocument();
+      if (!sections.length) {
+        raf = requestAnimationFrame(attachVirtual);
+        return;
+      }
+
+      const recompute = () => {
+        sections = readSectionsFromDocument();
+      };
+
+      const onProgress = (ev: Event) => {
+        const e = ev as CustomEvent<{ progress: number }>;
+        const progress = clamp01(e.detail?.progress ?? 0);
+
+        const count = sections.length;
+        if (count <= 1) {
+          poseRef.current.activeIndex = 0;
+          poseRef.current.between = 0;
+          poseRef.current.sectionId = sections[0]?.id ?? "hero";
+          return;
+        }
+
+        const idxFloat = progress * (count - 1);
+        const idx = Math.max(0, Math.min(count - 1, Math.floor(idxFloat)));
+        const between = clamp01(idxFloat - idx);
+
+        poseRef.current.activeIndex = idx;
+        poseRef.current.between = idx === count - 1 ? 0 : between;
+        poseRef.current.sectionId = sections[idx]?.id ?? "unknown";
+      };
+
+      // Initialize
+      onProgress(new CustomEvent("snap:progress", { detail: { progress: 0 } }));
+
+      window.addEventListener("resize", recompute, { passive: true });
+      window.addEventListener("snap:progress", onProgress as any);
+
+      cleanup = () => {
+        window.removeEventListener("resize", recompute as any);
+        window.removeEventListener("snap:progress", onProgress as any);
+      };
+    };
+
+    // ✅ Real scroll container mode (desktop)
+    const attachRealScroll = () => {
       const container = containerRef.current;
       if (!container) {
         raf = requestAnimationFrame(tryAttach);
@@ -286,6 +308,18 @@ export function HeroCanvas() {
       };
     };
 
+    const tryAttach = () => {
+      // If we have a real scroll container (desktop), use it.
+      // Otherwise (mobile slider), use virtual progress.
+      const container = containerRef.current;
+
+      const looksScrollable =
+        !!container && container.scrollHeight > container.clientHeight + 1;
+
+      if (looksScrollable) attachRealScroll();
+      else attachVirtual();
+    };
+
     tryAttach();
 
     return () => {
@@ -297,16 +331,12 @@ export function HeroCanvas() {
   return (
     <Canvas
       gl={{
-        // ✅ big perf: no AA on low/mid (and honestly you can keep it off always)
         antialias: quality === "high" ? true : false,
         alpha: true,
         powerPreference: "high-performance",
         preserveDrawingBuffer: false,
-
-        // ✅ reduce shader precision cost on some GPUs
         precision: quality === "low" ? "mediump" : "highp",
       }}
-      // ✅ allow lower-than-1 DPR
       dpr={dpr}
       camera={{ position: [0, 0.2, 12], fov: 60, near: 0.1, far: 2000 }}
       onCreated={({ gl }) => {
@@ -315,9 +345,6 @@ export function HeroCanvas() {
         gl.outputColorSpace = THREE.SRGBColorSpace;
       }}
     >
-      {/* ✅ cap FPS for low-end */}
-
-
       <FXBackground quality={quality} />
       <BottomRedGlow groupRef={glowRef} quality={quality} />
 
@@ -329,7 +356,6 @@ export function HeroCanvas() {
         <Hero3DModel poseRef={poseRef} />
       </Suspense>
 
-      {/* ✅ Bloom only on true high */}
       {quality === "high" ? (
         <EffectComposer multisampling={0}>
           <SelectiveBloom

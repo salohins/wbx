@@ -6,6 +6,9 @@ import { useTranslation } from "../hooks/useTranslation";
 import { AboutParallaxBackgroundWebGL } from "../sections/About/AboutParallaxBackgroundWebGL";
 import type { ParallaxPose } from "../sections/About/AboutParallaxBackgroundWebGL";
 import { useScreenScrollRef } from "../app/ScreenScrollContext";
+import { AboutUsSection } from "../sections/About/AboutUsSection";
+import { PhilosophySection } from "../sections/About/PhilosophySection";
+import { StatsDashboardSection } from "../sections/About/StatsDashboardSection";
 
 type ScrollPoseState = {
     activeIndex: number;
@@ -247,38 +250,11 @@ export function InfoScreen() {
                 />
             </div>
 
-            <SnapSection sectionId="about">
-                <div className="h-full w-full max-w-3xl mx-auto px-6 flex flex-col justify-center">
-                    <h1 className="text-4xl font-semibold mb-6">About WebX</h1>
-                    <p className="text-lg leading-relaxed opacity-80">
-                        We design and build modern digital products with a strong focus on clarity, performance, and long-term
-                        scalability. Our work sits at the intersection of design, technology, and strategy.
-                    </p>
-                </div>
-            </SnapSection>
+            <AboutUsSection />
 
-            <SnapSection sectionId="philosophy">
-                <div className="h-full w-full max-w-3xl mx-auto px-6 flex flex-col justify-center">
-                    <h2 className="text-3xl font-medium mb-6">Our Philosophy</h2>
-                    <ul className="space-y-4 text-lg opacity-80">
-                        <li>• Design follows intent, not trends</li>
-                        <li>• Technology should simplify, not complicate</li>
-                        <li>• Good systems age well</li>
-                        <li>• Automation beats repetition</li>
-                    </ul>
-                </div>
-            </SnapSection>
+            <PhilosophySection />
 
-            <SnapSection sectionId="values">
-                <div className="h-full w-full max-w-3xl mx-auto px-6 flex flex-col justify-center">
-                    <h2 className="text-3xl font-medium mb-6">What sets us apart</h2>
-                    <div className="grid grid-cols-1 gap-6 text-lg opacity-80">
-                        <p>We don’t sell templates or shortcuts. Every solution is built around real requirements.</p>
-                        <p>We think in systems, not pages — so your product can grow without breaking.</p>
-                        <p>We value long-term partnerships over quick wins.</p>
-                    </div>
-                </div>
-            </SnapSection>
+            <StatsDashboardSection />
         </div>
     );
 }

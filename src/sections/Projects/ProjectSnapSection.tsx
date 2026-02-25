@@ -56,7 +56,16 @@ export function ProjectSnapSection({
   accent = "rgba(255, 30, 30, 0.16)",
 }: ProjectSnapSectionProps) {
   return (
-    <SnapSection sectionId={sectionId} title={title} subtitle={subtitle} maxWidth={maxWidth} desktopAlign={desktopAlign}>
+    <SnapSection
+      sectionId={sectionId}
+      title={title}
+      subtitle={subtitle}
+      maxWidth={maxWidth}
+      desktopAlign={desktopAlign}
+      // ✅ proper peek handled by SnapSection (no per-slide hacks)
+      mobileSliderMode="peek"
+      mobilePeekGutterPx={18} // tweak 14..22
+    >
       <div className="w-full h-full">
         <ProjectCard project={project} accent={accent} />
       </div>
@@ -104,23 +113,21 @@ function ProjectCard({ project, accent }: { project: Project; accent: string }) 
                     accent={accent}
                     href={primaryHref}
                     statusVariant="light"
-                  // ✅ overlay removed — overlay is now its own slide
                   />
                 </div>
               </div>
             </div>
           </SnapSection.Slide>
 
-          {/* ✅ Slide 2 (MOBILE ONLY): full-screen overlay */}
+          {/* ✅ Slide 2 (MOBILE ONLY): overlay — proper peek comes from SnapSection */}
           <SnapSection.Slide id={`${project.id}:overlay`} order={1}>
-            {/* SnapSection mobile wrapper applies px-5; cancel it so the slide can be full-width */}
-            <div className="lg:hidden h-full w-[calc(100%+40px)] -mx-5 flex items-center justify-center">
-              <div className="w-full max-w-[520px] px-5">
-                <MobileOverlay project={project} />
+            <div className="lg:hidden w-full h-full flex items-center justify-center">
+              <div className="w-full h-[60vh] max-w-[520px]">
+                {/* ✅ bg is configurable, grid is back */}
+                <MobileOverlay project={project} bg={accent} />
               </div>
             </div>
 
-            {/* Desktop: don't show this slide content (desktop doesn't render slides anyway, but keep it safe) */}
             <div className="hidden lg:block" />
           </SnapSection.Slide>
         </div>
@@ -144,52 +151,341 @@ function ProjectCard({ project, accent }: { project: Project; accent: string }) 
   );
 }
 
-/** Mobile overlay card (only on mobile) */
-function MobileOverlay({ project }: { project: Project }) {
+/** Mobile overlay card (only on mobile) — GRID ON, bg configurable via prop */
+function MobileOverlay({
+  project,
+  bg, // ✅ keep prop (used only for subtle glow), surface is light/dark like ServiceRow unselected
+}: {
+  project: Project;
+  bg: string;
+}) {
   const primary = project.links?.[0];
 
+  // ✅ fixed sizing (no device tier)
+  const padMobile = "px-6 py-6";
+  const headerGapMobile = "gap-4";
+  const titleMtMobile = "mt-3";
+  const descMtMobile = "mt-2";
+  const morePtMobile = "pt-4";
+  const pillsGapMobile = "gap-2";
+  const btnRowMtMobile = "mt-5";
+  const btnGapMobile = "gap-3";
+
+  const titleSizeMobile = "text-[32px]";
+  const descSizeMobile = "text-[16px]";
+  const pillTextMobile = "text-[9px]";
+  const btnTextMobile = "text-[10px]";
+
+  // ✅ behave like ServiceRow "unselected"
+  const surfaceClass = "bg-white dark:bg-neutral-900/70";
+  const textPrimaryClass = "text-neutral-900 dark:text-white";
+  const textSecondaryClass = "text-neutral-700 dark:text-white/90";
+
+  // ✅ unselected grid logic (light vs dark)
+  const majorGridLightUnselected = `
+    linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
+  `;
+  const minorGridLightUnselected = `
+    linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)
+  `;
+  const majorGridWhite = `
+    linear-gradient(to right, rgba(255,255,255,0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.14) 1px, transparent 1px)
+  `;
+  const minorGridWhite = `
+    linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)
+  `;
+
+  const inactiveInnerHighlight =
+    "radial-gradient(circle at 22% 10%, rgba(255,255,255,0.22), transparent 52%)," +
+    "linear-gradient(180deg, rgba(255,255,255,0.10), transparent 34%)," +
+    "radial-gradient(circle at 88% 78%, rgba(0,0,0,0.14), transparent 60%)";
+
+  // ✅ bg prop is kept but used only as a subtle top glow wash (optional)
+  const glow = pickGlowFromAnyColor(bg) ?? "rgba(255,255,255,0.12)";
+
   return (
-    <div className="lg:hidden rounded-2xl border border-white/10 bg-black/45 p-3">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[13px] font-semibold text-white/95 truncate">{project.name}</p>
+    <div className="lg:hidden h-full w-full">
+      <div
+        className={[
+          "relative w-full h-full overflow-hidden",
+          "rounded-[28px]",
+          "border border-white/10",
+          padMobile,
+          "transform-gpu",
+        ].join(" ")}
+        style={{
+          boxShadow: "0 22px 60px rgba(0, 0, 0, 0.16)",
+        }}
+      >
+        {/* BASE SURFACE (light/dark like ServiceRow unselected) */}
+        <div aria-hidden className={["absolute inset-0 transition-colors duration-300", surfaceClass].join(" ")} />
 
-          {project.year ? (
-            <span className="shrink-0 rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] text-white/70">
-              {project.year}
-            </span>
-          ) : null}
-        </div>
+        {/* Inactive depth (same as ServiceRow unselected) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.85]"
+          style={{
+            background: inactiveInnerHighlight,
+            mixBlendMode: "soft-light",
+          }}
+        />
 
-        {project.tags?.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {project.tags.slice(0, 3).map((t) => (
-              <TagPill key={t} label={t} small />
-            ))}
-          </div>
-        ) : null}
+        {/* Micro edge/bezel */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-[28px] opacity-70"
+          style={{
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+          }}
+        />
 
-        <p className="text-[12px] leading-relaxed text-white/72">{project.description}</p>
+        {/* GRID (major): light mode */}
+        <div
+          aria-hidden
+          className="absolute inset-0 dark:hidden"
+          style={{
+            backgroundImage: majorGridLightUnselected,
+            backgroundSize: "28px 28px",
+            opacity: 1,
+            mixBlendMode: "multiply",
+          }}
+        />
+        {/* GRID (major): dark mode */}
+        <div
+          aria-hidden
+          className="absolute inset-0 hidden dark:block"
+          style={{
+            backgroundImage: majorGridWhite,
+            backgroundSize: "28px 28px",
+            opacity: 1,
+            mixBlendMode: "multiply",
+          }}
+        />
 
-        {primary ? (
-          <div className="mt-1 flex flex-wrap gap-2">
-            <SmartLink
-              href={primary.href}
-              className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 py-1.5 text-[11px] text-white/90"
+        {/* GRID (minor): light mode */}
+        <div
+          aria-hidden
+          className="absolute inset-0 dark:hidden"
+          style={{
+            backgroundImage: minorGridLightUnselected,
+            backgroundSize: "7px 7px",
+            opacity: 0.1,
+            mixBlendMode: "multiply",
+          }}
+        />
+        {/* GRID (minor): dark mode */}
+        <div
+          aria-hidden
+          className="absolute inset-0 hidden dark:block"
+          style={{
+            backgroundImage: minorGridWhite,
+            backgroundSize: "7px 7px",
+            opacity: 0.1,
+            mixBlendMode: "multiply",
+          }}
+        />
+
+        {/* subtle accent wash (uses bg prop but does NOT define surface) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.10]"
+          style={{
+            background: `radial-gradient(circle at 18% 0%, ${glow}, transparent 58%)`,
+            mixBlendMode: "multiply",
+          }}
+        />
+
+        {/* RADIAL LIGHT */}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(circle at 10% 0%, rgba(0,0,0,0.10), transparent 55%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(circle at 80% 50%, rgba(0,0,0,0.20), transparent 58%)",
+          }}
+        />
+
+        {/* CONTENT */}
+        <div className="relative z-[1] h-full flex flex-col">
+          {/* Header */}
+          <div className="flex-none">
+            <div className={`flex items-center ${headerGapMobile}`}>
+              <div className="text-[13px] tracking-[0.24em] shrink-0 text-neutral-600 dark:text-white/90">
+                {project.year ? project.year : "00"}
+              </div>
+
+              <div className="h-px flex-1 max-w-[64px] bg-neutral-900/15 dark:bg-white/30" />
+            </div>
+
+            <div
+              className={[
+                `${titleMtMobile} ${titleSizeMobile} sm:text-[38px] font-semibold tracking-[-0.02em] leading-10`,
+                textPrimaryClass,
+                "break-words",
+              ].join(" ")}
             >
-              {primary.label}
-            </SmartLink>
+              {project.name}
+            </div>
+
+            <div
+              className={[
+                `${descMtMobile} ${descSizeMobile} sm:text-[18px] leading-relaxed`,
+                textSecondaryClass,
+              ].join(" ")}
+            >
+              {project.description}
+            </div>
           </div>
-        ) : null}
+
+          {/* Scroll area */}
+          <div className="flex-1 min-h-0 overflow-auto">
+            <div className={morePtMobile}>
+              {/* TAG PILLS — EXACT unselected style from ServiceRow */}
+              {!!project.tags?.length && (
+                <div className={["flex items-center flex-wrap", pillsGapMobile].join(" ")}>
+                  {project.tags.slice(0, 7).map((m) => (
+                    <span
+                      key={m}
+                      className={[
+                        "inline-flex items-center whitespace-nowrap",
+                        "h-7 px-3 rounded-full",
+                        `${pillTextMobile} tracking-[0.22em]`,
+                        "uppercase",
+                        "bg-black/5 text-neutral-900/90 dark:bg-white/12 dark:text-white/95",
+                        "backdrop-blur-sm",
+                      ].join(" ")}
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {(project.client || project.role) && (
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  {project.client && (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 dark:bg-white/5 px-4 py-3">
+                      <p className="text-neutral-600 dark:text-white/55 text-[11px]">Client</p>
+                      <p className="mt-1 text-neutral-900 dark:text-white/85 truncate text-[13px]">
+                        {project.client}
+                      </p>
+                    </div>
+                  )}
+                  {project.role && (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 dark:bg-white/5 px-4 py-3">
+                      <p className="text-neutral-600 dark:text-white/55 text-[11px]">Role</p>
+                      <p className="mt-1 text-neutral-900 dark:text-white/85 truncate text-[13px]">
+                        {project.role}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer actions */}
+          <div className="flex-none pt-4">
+            <div className={[`${btnRowMtMobile} flex items-center`, `flex-nowrap ${btnGapMobile}`].join(" ")}>
+              {primary ? (
+                <>
+                  {/* PRIMARY — EXACT unselected “View cases” */}
+                  <SmartLink
+                    href={primary.href}
+                    className={[
+                      "flex-1",
+                      "h-10 px-4",
+                      `${btnTextMobile} tracking-[0.24em]`,
+                      "rounded-full uppercase",
+                      "bg-neutral-900 text-white hover:bg-neutral-900/90 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 shadow-sm",
+                      "active:scale-[0.98] transition whitespace-nowrap",
+                      "inline-flex items-center justify-center",
+                    ].join(" ")}
+                  >
+                    {primary.label} →
+                  </SmartLink>
+
+                  {/* SECONDARY — EXACT unselected “Learn more” */}
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(primary.href)}
+                    className={[
+                      "h-10 px-4",
+                      `${btnTextMobile} tracking-[0.24em]`,
+                      "rounded-full uppercase",
+                      "bg-black/5 text-neutral-900 hover:bg-black/10 dark:bg-white/14 dark:text-white dark:hover:bg-white/18",
+                      "active:scale-[0.98] transition whitespace-nowrap",
+                    ].join(" ")}
+                  >
+                    Copy
+                  </button>
+                </>
+              ) : (
+                <div className="text-neutral-600 dark:text-white/50 text-[12px]">No link provided.</div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
+/**
+ * Converts any passed background color into a soft “glow” color.
+ * - If it's rgba()/rgb(): uses same rgb + reduced alpha
+ * - If it's hex: converts to rgba with default alpha
+ * - Otherwise returns null (fallback used)
+ */
+function pickGlowFromAnyColor(color?: string | null) {
+  if (!color || typeof color !== "string") return null;
+
+  // rgba / rgb
+  const m = color.match(
+    /rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)/i
+  );
+  if (m) {
+    const r = Number(m[1]);
+    const g = Number(m[2]);
+    const b = Number(m[3]);
+    const rawA = m[4] ? Number(m[4]) : 0.25;
+    const a = Math.min(0.55, Math.max(0.18, rawA * 0.6));
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  // hex (#rgb, #rrggbb)
+  const hex = color.trim();
+  const hexMatch = hex.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hexMatch) {
+    const h = hexMatch[1];
+    const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},0.22)`;
+  }
+
+  return null;
+}
+
 function TagPill({ label, small }: { label: string; small?: boolean }) {
   const scheme = getTagScheme(label);
   const cls = small ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs";
-  return <span className={["inline-flex items-center rounded-full border", cls, scheme].join(" ")}>{label}</span>;
+  return (
+    <span className={["inline-flex items-center rounded-full border", cls, scheme].join(" ")}>
+      {label}
+    </span>
+  );
 }
 
 function getTagScheme(label: string) {

@@ -19,49 +19,64 @@ function ContactChannelCard({
         <a
             href={href}
             className={[
-                "group relative w-full rounded-2xl border border-white/10 bg-white/5",
+                "group relative w-full rounded-2xl border",
+                "border-neutral-200/70 bg-white/80",
+                "dark:border-white/10 dark:bg-white/5",
                 "px-5 py-4",
                 "transition-transform duration-500",
-                "hover:-translate-y-0.5 hover:bg-white/7",
+                "hover:-translate-y-0.5",
+                "hover:bg-white",
+                "dark:hover:bg-white/7",
             ].join(" ")}
         >
             <div className="flex items-center gap-4">
-                <div className="grid h-12 w-12 place-items-center rounded-xl bg-white/7 border border-white/10">
+                <div
+                    className={[
+                        "grid h-12 w-12 place-items-center rounded-xl border",
+                        "bg-neutral-900/5 border-neutral-200/70",
+                        "dark:bg-white/7 dark:border-white/10",
+                    ].join(" ")}
+                >
                     {icon}
                 </div>
+
                 <div className="min-w-0">
-                    <div className="text-white text-base font-semibold tracking-tight">{title}</div>
-                    <div className="text-white/70 text-sm leading-snug">{subtitle}</div>
+                    <div className="text-neutral-900 dark:text-white text-base font-semibold tracking-tight">
+                        {title}
+                    </div>
+                    <div className="text-neutral-600 dark:text-white/70 text-sm leading-snug">
+                        {subtitle}
+                    </div>
                 </div>
-                <div className="ml-auto text-white/40 group-hover:text-white/70 transition-colors">
+
+                <div className="ml-auto text-neutral-400 group-hover:text-neutral-700 dark:text-white/40 dark:group-hover:text-white/70 transition-colors">
                     <ArrowRight className="h-4 w-4" />
                 </div>
             </div>
 
-            {/* subtle glow */}
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                 style={{
                     background:
-                        "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.10), transparent 55%)",
+                        "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.14), transparent 55%)",
                 }}
             />
         </a>
     );
 }
 
-function MiniFaqCard({
-    q,
-    a,
-}: {
-    q: string;
-    a: string;
-}) {
+function MiniFaqCard({ q, a }: { q: string; a: string }) {
     return (
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-            <div className="text-white font-semibold text-sm">{q}</div>
-            <div className="mt-1 text-white/70 text-sm leading-snug">{a}</div>
+        <div
+            className={[
+                "rounded-2xl border px-5 py-4",
+                "border-neutral-200/70 bg-white/80",
+                "dark:border-white/10 dark:bg-white/5",
+            ].join(" ")}
+        >
+            <div className="text-neutral-900 dark:text-white font-semibold text-sm">{q}</div>
+            <div className="mt-1 text-neutral-600 dark:text-white/70 text-sm leading-snug">{a}</div>
         </div>
     );
 }
@@ -71,30 +86,32 @@ export function ContactHeroSnapSection() {
         <SnapSection
             sectionId="contact-hero"
             title="Kontakt"
-            subtitle="Sag kurz, was du brauchst — wir antworten schnell."
+            subtitle="Teilen Sie uns kurz Ihr Anliegen mit – wir melden uns zeitnah bei Ihnen."
             maxWidth="max-w-7xl"
             desktopAlign="center"
+            mobileSplitIntoSections
+            mobileShowTitleOnFirstSplit
         >
             {/* ✅ DESKTOP LAYOUT */}
             <div className="hidden lg:grid w-full gap-8 items-center grid-cols-[320px_minmax(0,1fr)_360px]">
                 {/* Left column */}
                 <div className="flex flex-col gap-4">
                     <ContactChannelCard
-                        icon={<MessageCircle className="h-5 w-5 text-white/80" />}
+                        icon={<MessageCircle className="h-5 w-5 text-neutral-800 dark:text-white/80" />}
                         title="WhatsApp"
-                        subtitle="Schnellste Antwort — schreib uns direkt."
+                        subtitle="Direkter Kontakt – in der Regel die schnellste Rückmeldung."
                         href="#"
                     />
                     <ContactChannelCard
-                        icon={<Phone className="h-5 w-5 text-white/80" />}
+                        icon={<Phone className="h-5 w-5 text-neutral-800 dark:text-white/80" />}
                         title="Telefon"
-                        subtitle="Kurz anrufen — wir klären’s sofort."
+                        subtitle="Für eine kurze Abstimmung oder dringende Rückfragen."
                         href="tel:+41000000000"
                     />
                     <ContactChannelCard
-                        icon={<Mail className="h-5 w-5 text-white/80" />}
+                        icon={<Mail className="h-5 w-5 text-neutral-800 dark:text-white/80" />}
                         title="E-Mail"
-                        subtitle="Für längere Anfragen & Unterlagen."
+                        subtitle="Ideal für ausführliche Anfragen und Unterlagen."
                         href="mailto:hello@webx.ch"
                     />
                 </div>
@@ -106,39 +123,43 @@ export function ContactHeroSnapSection() {
 
                 {/* Right column */}
                 <div className="flex flex-col gap-4">
-                    <MiniFaqCard q="Wie schnell antwortet ihr?" a="Meist innerhalb von 1–3 Stunden (Mo–Fr)." />
-                    <MiniFaqCard q="Was kostet eine Website?" a="Kommt drauf an — wir schicken dir ein Fixpreis-Angebot." />
-                    <MiniFaqCard q="Kann ich nur Design/Branding buchen?" a="Ja — auch einzelne Module sind möglich." />
+                    <MiniFaqCard q="Wie schnell erhalten wir eine Rückmeldung?" a="In der Regel innerhalb von 1–3 Stunden (Mo–Fr)." />
+                    <MiniFaqCard q="Was kostet eine Website?" a="Abhängig vom Umfang – wir erstellen Ihnen gerne ein Fixpreis-Angebot." />
+                    <MiniFaqCard q="Ist auch nur Design/Branding möglich?" a="Ja – Sie können einzelne Leistungen modular buchen." />
 
                     <a
                         href="/faq"
-                        className="mt-2 inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/8 px-5 py-4 text-white font-semibold hover:bg-white/12 transition"
+                        className={[
+                            "mt-2 inline-flex items-center justify-center rounded-2xl border px-5 py-4 font-semibold transition",
+                            "border-neutral-200/70 bg-white/80 text-neutral-900 hover:bg-white",
+                            "dark:border-white/10 dark:bg-white/8 dark:text-white dark:hover:bg-white/12",
+                        ].join(" ")}
                     >
-                        Alle FAQs ansehen <ArrowRight className="ml-2 h-4 w-4" />
+                        Häufige Fragen ansehen <ArrowRight className="ml-2 h-4 w-4" />
                     </a>
                 </div>
             </div>
 
-            {/* ✅ MOBILE SLIDES */}
+            {/* ✅ MOBILE CONTENT REGISTRATION (split mode reads these slides) */}
             <div className="lg:hidden w-full">
                 <SnapSection.Slide id="contact-channels" order={0}>
                     <div className="w-full max-w-md flex flex-col gap-4">
                         <ContactChannelCard
-                            icon={<MessageCircle className="h-5 w-5 text-white/80" />}
+                            icon={<MessageCircle className="h-5 w-5 text-neutral-800 dark:text-white/80" />}
                             title="WhatsApp"
-                            subtitle="Schnellste Antwort — schreib uns direkt."
+                            subtitle="Direkter Kontakt – in der Regel die schnellste Rückmeldung."
                             href="#"
                         />
                         <ContactChannelCard
-                            icon={<Phone className="h-5 w-5 text-white/80" />}
+                            icon={<Phone className="h-5 w-5 text-neutral-800 dark:text-white/80" />}
                             title="Telefon"
-                            subtitle="Kurz anrufen — wir klären’s sofort."
+                            subtitle="Für eine kurze Abstimmung oder dringende Rückfragen."
                             href="tel:+41000000000"
                         />
                         <ContactChannelCard
-                            icon={<Mail className="h-5 w-5 text-white/80" />}
+                            icon={<Mail className="h-5 w-5 text-neutral-800 dark:text-white/80" />}
                             title="E-Mail"
-                            subtitle="Für längere Anfragen & Unterlagen."
+                            subtitle="Ideal für ausführliche Anfragen und Unterlagen."
                             href="mailto:hello@webx.ch"
                         />
                     </div>
@@ -152,15 +173,19 @@ export function ContactHeroSnapSection() {
 
                 <SnapSection.Slide id="contact-faq" order={2}>
                     <div className="w-full max-w-md flex flex-col gap-4">
-                        <MiniFaqCard q="Wie schnell antwortet ihr?" a="Meist innerhalb von 1–3 Stunden (Mo–Fr)." />
-                        <MiniFaqCard q="Was kostet eine Website?" a="Kommt drauf an — wir schicken dir ein Fixpreis-Angebot." />
-                        <MiniFaqCard q="Kann ich nur Design/Branding buchen?" a="Ja — auch einzelne Module sind möglich." />
+                        <MiniFaqCard q="Wie schnell erhalten wir eine Rückmeldung?" a="In der Regel innerhalb von 1–3 Stunden (Mo–Fr)." />
+                        <MiniFaqCard q="Was kostet eine Website?" a="Abhängig vom Umfang – wir erstellen Ihnen gerne ein Fixpreis-Angebot." />
+                        <MiniFaqCard q="Ist auch nur Design/Branding möglich?" a="Ja – Sie können einzelne Leistungen modular buchen." />
 
                         <a
                             href="/faq"
-                            className="mt-1 inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/8 px-5 py-4 text-white font-semibold hover:bg-white/12 transition"
+                            className={[
+                                "mt-1 inline-flex items-center justify-center rounded-2xl border px-5 py-4 font-semibold transition",
+                                "border-neutral-200/70 bg-white/80 text-neutral-900 hover:bg-white",
+                                "dark:border-white/10 dark:bg-white/8 dark:text-white dark:hover:bg-white/12",
+                            ].join(" ")}
                         >
-                            Alle FAQs ansehen <ArrowRight className="ml-2 h-4 w-4" />
+                            Häufige Fragen ansehen <ArrowRight className="ml-2 h-4 w-4" />
                         </a>
                     </div>
                 </SnapSection.Slide>

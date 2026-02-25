@@ -28,13 +28,13 @@ export const en = {
     },
 
     ui: {
-        slogan: 'GO FUCK YOURSELF.',
-        cta: 'Get in touch',
+        slogan: '',
+        cta: 'Kontakt',
         navigation: {
             home: 'Home',
-            info: 'About',
+            info: 'Über',
             projects: 'Projects',
-            contact: 'Contact',
+            contact: 'Kontakt',
             faq: 'FAQ',
         },
     },

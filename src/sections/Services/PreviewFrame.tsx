@@ -133,8 +133,8 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
                         startLoop();
                     }}
                 >
-                    
-                   
+
+
 
                     {/* TABLET SHELL */}
                     <div
@@ -176,9 +176,9 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
 
                             {/* SCREEN */}
                             <div className="absolute inset-[10px] rounded-[46px] overflow-hidden bg-transparent border border-white/10">
-                                
 
-                               
+
+
 
                                 {/* notch */}
                                 <div
@@ -218,19 +218,19 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
                                                 opacity: 0,
                                                 y: 18,
                                                 scale: 0.985,
-                           
+
                                             }}
                                             animate={{
                                                 opacity: 1,
                                                 y: 0,
                                                 scale: 1,
-                                        
+
                                             }}
                                             exit={{
                                                 opacity: 0,
                                                 y: -14,
                                                 scale: 1.01,
-                                           
+
                                             }}
                                             transition={{
                                                 duration: 0.42,
@@ -251,9 +251,9 @@ export function PreviewFrame({ active }: { active: ServiceId }) {
                                                 }}
                                             />
 
-                                                {active === "websites" && <WebsitePreview />}
-                                                {active === "tools" && <ToolsPreview />}
-                                                {active === "branding" && <BrandingPreview />}
+                                            {active === "websites" && <WebsitePreview />}
+                                            {active === "tools" && <ToolsPreview />}
+                                            {active === "branding" && <BrandingPreview />}
                                         </motion.div>
                                     </AnimatePresence>
 

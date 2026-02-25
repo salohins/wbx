@@ -99,6 +99,28 @@ function applyTextureCover(tex: THREE.Texture, viewW: number, viewH: number) {
     tex.needsUpdate = true;
 }
 
+/** Touch-primary detection ONLY for disabling pointer parallax (not for picking mobile assets). */
+function detectTouchPrimary() {
+    if (typeof window === "undefined") return false;
+
+    const mqCoarse = window.matchMedia?.("(pointer: coarse)");
+    const mqNoHover = window.matchMedia?.("(hover: none)");
+    const hasTouchPoints = (navigator.maxTouchPoints ?? 0) > 0;
+
+    return !!mqCoarse?.matches && !!mqNoHover?.matches && hasTouchPoints;
+}
+
+/** ✅ Breakpoint-based mobile detection for assets/poses. */
+const MOBILE_BP = 900; // tweak: 768 / 820 / 900
+function detectMobileViewport() {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < MOBILE_BP;
+}
+
+function pickSrc(id: string, isMobile: boolean) {
+    return isMobile ? `/images/parallax/mobile/${id}.png` : `/images/parallax/${id}.png`;
+}
+
 function Scene({
     poseRef,
     poses,
@@ -164,6 +186,9 @@ function Scene({
         }
 
         const onMove = (e: PointerEvent) => {
+            // ✅ hard block any touch/pen movement
+            if (e.pointerType !== "mouse") return;
+
             const px = e.clientX / Math.max(1, window.innerWidth);
             const py = e.clientY / Math.max(1, window.innerHeight);
             mx.current = px - 0.5;
@@ -280,19 +305,6 @@ export type AboutParallaxBackgroundWebGLProps = {
     active?: boolean;
 };
 
-function detectTouch() {
-    if (typeof window === "undefined") return false;
-    return (
-        window.matchMedia?.("(pointer: coarse)")?.matches ||
-        "ontouchstart" in window ||
-        (navigator.maxTouchPoints ?? 0) > 0
-    );
-}
-
-function pickSrc(id: string, isTouch: boolean) {
-    return isTouch ? `/images/parallax/mobile/${id}.png` : `/images/parallax/${id}.png`;
-}
-
 export function AboutParallaxBackgroundWebGL({
     poseRef,
     poses: posesProp,
@@ -302,45 +314,55 @@ export function AboutParallaxBackgroundWebGL({
     const reducedMotion = useReducedMotionLike();
     const enable = active && !reducedMotion;
 
-    const [isTouch, setIsTouch] = useState(false);
+    // ✅ separate concerns:
+    // - isMobileViewport => assets + poses
+    // - touchPrimary     => disable pointer parallax
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
+    const [touchPrimary, setTouchPrimary] = useState(false);
 
-    // touch detection reactive
     useEffect(() => {
         if (typeof window === "undefined") return;
 
-        const mq = window.matchMedia?.("(pointer: coarse)");
-        const update = () => setIsTouch(detectTouch());
+        const mqCoarse = window.matchMedia?.("(pointer: coarse)");
+        const mqNoHover = window.matchMedia?.("(hover: none)");
+
+        const update = () => {
+            setIsMobileViewport(detectMobileViewport());
+            setTouchPrimary(detectTouchPrimary());
+        };
 
         update();
-        mq?.addEventListener?.("change", update);
+        mqCoarse?.addEventListener?.("change", update);
+        mqNoHover?.addEventListener?.("change", update);
         window.addEventListener("resize", update);
 
         return () => {
-            mq?.removeEventListener?.("change", update);
+            mqCoarse?.removeEventListener?.("change", update);
+            mqNoHover?.removeEventListener?.("change", update);
             window.removeEventListener("resize", update);
         };
     }, []);
 
-    const enablePointer = enable && !isTouch;
+    const enablePointer = enable && !touchPrimary;
 
-    // ✅ pick the correct pose set
+    // ✅ pick the correct pose set by viewport breakpoint
     const poses = useMemo(() => {
         const desktop = posesProp ?? [];
         const mobile = mobilePoses ?? desktop;
-        return isTouch ? mobile : desktop;
-    }, [posesProp, mobilePoses, isTouch]);
+        return isMobileViewport ? mobile : desktop;
+    }, [posesProp, mobilePoses, isMobileViewport]);
 
-    // ✅ load correct textures per device
+    // ✅ load correct textures by viewport breakpoint
     const layers: LayerDef[] = useMemo(
         () => [
-            { id: "m1", src: pickSrc("m1", isTouch), depth: 0.1, baseScale: 1.5, baseY: 0, zIndex: 6, baseOpacity: 1 },
-            { id: "m2", src: pickSrc("m2", isTouch), depth: 0.35, baseScale: 1.5, baseY: 50, zIndex: 5, baseOpacity: 1 },
-            { id: "m3", src: pickSrc("m3", isTouch), depth: 0.6, baseScale: 1.0, baseY: 50, zIndex: 4 },
-            { id: "m4", src: pickSrc("m4", isTouch), depth: 0.9, baseScale: 1.06, baseY: 200, zIndex: 3 },
-            { id: "m5", src: pickSrc("m5", isTouch), depth: 1.2, baseScale: 1.0, baseY: 0, zIndex: 2 },
-            { id: "m6", src: pickSrc("m6", isTouch), depth: 1.4, baseScale: 1.0, baseY: 150, zIndex: 1, baseOpacity: 1 },
+            { id: "m1", src: pickSrc("m1", isMobileViewport), depth: 0.1, baseScale: 1.5, baseY: 0, zIndex: 6, baseOpacity: 1 },
+            { id: "m2", src: pickSrc("m2", isMobileViewport), depth: 0.35, baseScale: 1.5, baseY: 50, zIndex: 5, baseOpacity: 1 },
+            { id: "m3", src: pickSrc("m3", isMobileViewport), depth: 0.6, baseScale: 1.0, baseY: 50, zIndex: 4 },
+            { id: "m4", src: pickSrc("m4", isMobileViewport), depth: 0.9, baseScale: 1.06, baseY: 200, zIndex: 3 },
+            { id: "m5", src: pickSrc("m5", isMobileViewport), depth: 1.2, baseScale: 1.0, baseY: 0, zIndex: 2 },
+            { id: "m6", src: pickSrc("m6", isMobileViewport), depth: 1.4, baseScale: 1.0, baseY: 150, zIndex: 1, baseOpacity: 1 },
         ],
-        [isTouch]
+        [isMobileViewport]
     );
 
     const sortedLayers = useMemo(() => {
@@ -375,13 +397,7 @@ export function AboutParallaxBackgroundWebGL({
                 }}
             >
                 <Suspense fallback={null}>
-                    <Scene
-                        poseRef={poseRef}
-                        poses={poses}
-                        layers={sortedLayers}
-                        enablePointer={enablePointer}
-                        isTouch={isTouch}
-                    />
+                    <Scene poseRef={poseRef} poses={poses} layers={sortedLayers} enablePointer={enablePointer} />
                 </Suspense>
             </Canvas>
         </div>

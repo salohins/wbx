@@ -1,113 +1,150 @@
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+    Inbox,
+    Calendar,
+    Send,
+    Sparkles,
+    Globe,
+    MapPin,
+    Phone,
+    Mail,
+    FileText,
+    LayoutTemplate,
+    Layers,
+    Zap,
+    ChevronRight,
+    Search,
+    SlidersHorizontal,
+    Download,
+    ExternalLink,
+    MessageSquare,
+    Clock,
+    BadgeCheck,
+} from "lucide-react";
 
-type Lead = {
+type RequestStatus = "Inquiry" | "Call booked" | "Proposal sent" | "Active";
+
+type Request = {
     id: string;
     name: string;
     company: string;
-    status: "New" | "Qualified" | "In progress" | "Won";
-    value: string;
+    status: RequestStatus;
+    budget: "Low" | "Medium" | "High";
     last: string;
     email: string;
     phone: string;
-    note: string;
+    message: string;
+    scope: string[];
+    timeline: string;
+    website?: string;
 };
 
 export function ToolsPreview() {
-    const leads: Lead[] = useMemo(
+    const requests: Request[] = useMemo(
         () => [
             {
-                id: "l1",
+                id: "r1",
                 name: "Nina L.",
-                company: "Lüscher & Partners AG",
-                status: "New",
-                value: "CHF 6’900",
+                company: "Alpine Advisory",
+                status: "Inquiry",
+                budget: "High",
                 last: "1h ago",
-                email: "nina@luescher.ch",
+                email: "nina@alpine-advisory.ch",
                 phone: "+41 79 123 45 67",
-                note: "Wants a premium Swiss-style website + references section.",
+                message: "We need a clean, premium site that builds trust and explains our services clearly.",
+                scope: ["Website", "References", "Contact flow"],
+                timeline: "2–3 weeks",
+                website: "alpine-advisory.ch",
             },
             {
-                id: "l2",
+                id: "r2",
                 name: "Tobias B.",
-                company: "TB Bau & Management",
-                status: "In progress",
-                value: "CHF 5’400",
+                company: "Northstone Build",
+                status: "Call booked",
+                budget: "Medium",
                 last: "Today",
-                email: "tobias@tbbau.ch",
+                email: "tobias@northstone.ch",
                 phone: "+41 78 222 10 90",
-                note: "Needs Figma + offer this week. Focus on structure + credibility.",
+                message: "We want a modern site with strong structure and clear sections for services and projects.",
+                scope: ["Website", "Projects", "SEO basics"],
+                timeline: "2 weeks",
+                website: "northstone.ch",
             },
             {
-                id: "l3",
+                id: "r3",
                 name: "Domenico R.",
-                company: "Wio Personal AG",
-                status: "Qualified",
-                value: "CHF 4’800",
+                company: "Wio Staffing",
+                status: "Proposal sent",
+                budget: "Medium",
                 last: "2d ago",
-                email: "domenico@wio.ae",
+                email: "domenico@wio-group.com",
                 phone: "+971 50 555 12 34",
-                note: "Logo first. Website later if brand direction approved.",
+                message: "We want a brand refresh and a website that looks trustworthy and modern.",
+                scope: ["Branding", "Website"],
+                timeline: "3–4 weeks",
+                website: "wio-group.com",
             },
             {
-                id: "l4",
+                id: "r4",
                 name: "Daniel Z.",
-                company: "Zimmermann AG",
-                status: "Won",
-                value: "CHF 2’200",
+                company: "Zimmermann Studio",
+                status: "Active",
+                budget: "Low",
                 last: "6d ago",
-                email: "daniel@zimmermann.ch",
+                email: "daniel@zimmermann-studio.ch",
                 phone: "+41 76 333 66 11",
-                note: "Landing done. Possible upsell: maintenance + SEO refresh.",
+                message: "A focused landing page with a clear offer and a contact form.",
+                scope: ["Landing page", "Contact form"],
+                timeline: "1 week",
+                website: "zimmermann-studio.ch",
             },
             {
-                id: "l5",
-                name: "Marco K.",
-                company: "Baar IT Solutions",
-                status: "Qualified",
-                value: "CHF 3’600",
-                last: "3d ago",
-                email: "marco@baarit.ch",
-                phone: "+41 79 444 22 88",
-                note: "Interested in admin panel + lead capture automations.",
-            },
-            {
-                id: "l6",
+                id: "r5",
                 name: "Sara P.",
-                company: "Zug Events",
-                status: "New",
-                value: "CHF 1’900",
+                company: "City Events",
+                status: "Inquiry",
+                budget: "Low",
                 last: "4h ago",
-                email: "sara@zugevents.ch",
+                email: "sara@city-events.ch",
                 phone: "+41 79 888 11 55",
-                note: "Wants fast promo landing + IG integration.",
+                message: "We need a fast page for an upcoming event with a clean layout and signup.",
+                scope: ["Landing page", "Signup"],
+                timeline: "3–5 days",
+                website: "city-events.ch",
             },
         ],
         []
     );
 
-    const [selectedId, setSelectedId] = useState<string | null>("l2");
-    const [drawerOpen, setDrawerOpen] = useState<boolean>(true);
+    const [selectedId, setSelectedId] = useState<string | null>("r2");
+    const [drawerOpen, setDrawerOpen] = useState(true);
     const [toast, setToast] = useState<null | { title: string; desc?: string }>(null);
 
-    const selected = useMemo(() => leads.find((l) => l.id === selectedId) ?? null, [leads, selectedId]);
+    const selected = useMemo(() => requests.find((r) => r.id === selectedId) ?? null, [requests, selectedId]);
 
     const kpis = useMemo(() => {
-        const total = leads.length;
-        const qualified = leads.filter((l) => l.status === "Qualified").length;
-        const won = leads.filter((l) => l.status === "Won").length;
+        const total = requests.length;
+        const calls = requests.filter((r) => r.status === "Call booked").length;
+        const active = requests.filter((r) => r.status === "Active").length;
         return [
-            { label: "Leads", value: String(total) },
-            { label: "Qualified", value: String(qualified) },
-            { label: "Won", value: String(won) },
+            { label: "Requests", value: String(total), icon: Inbox },
+            { label: "Calls", value: String(calls), icon: Calendar },
+            { label: "Active", value: String(active), icon: Sparkles },
         ];
-    }, [leads]);
+    }, [requests]);
 
-    const statusChip = (s: Lead["status"]) => {
-        if (s === "New") return { bg: "rgba(56,189,248,0.22)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)" };
-        if (s === "Qualified") return { bg: "rgba(34,197,94,0.22)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)" };
-        if (s === "In progress") return { bg: "rgba(168,85,247,0.20)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)" };
-        return { bg: "rgba(251,113,133,0.22)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)" };
+    const statusChip = (s: RequestStatus) => {
+        if (s === "Inquiry") return { bg: "rgba(56,189,248,0.22)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)", icon: MessageSquare };
+        if (s === "Call booked") return { bg: "rgba(34,197,94,0.22)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)", icon: Calendar };
+        if (s === "Proposal sent") return { bg: "rgba(168,85,247,0.20)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)", icon: Send };
+        return { bg: "rgba(251,113,133,0.22)", text: "rgba(15,23,42,0.90)", ring: "rgba(15,23,42,0.10)", icon: BadgeCheck };
+    };
+
+    const budgetChip = (b: Request["budget"]) => {
+        if (b === "Low") return { bg: "rgba(0,0,0,0.06)", text: "rgba(8,10,20,0.72)", ring: "rgba(0,0,0,0.10)" };
+        if (b === "Medium") return { bg: "rgba(0,0,0,0.08)", text: "rgba(8,10,20,0.78)", ring: "rgba(0,0,0,0.10)" };
+        return { bg: "rgba(0,0,0,0.10)", text: "rgba(8,10,20,0.86)", ring: "rgba(0,0,0,0.10)" };
     };
 
     const fireToast = (title: string, desc?: string) => {
@@ -115,17 +152,15 @@ export function ToolsPreview() {
         window.setTimeout(() => setToast(null), 1400);
     };
 
-    const openLead = (id: string) => {
+    const openRequest = (id: string) => {
         setSelectedId(id);
         setDrawerOpen(true);
-        const l = leads.find((x) => x.id === id);
-        fireToast("Opened lead", l?.company);
+        const r = requests.find((x) => x.id === id);
+        fireToast("Opened", r?.company);
     };
 
-    // ✅ simple density (so it always fits)
-    const tableVisible = 4; // show fewer rows so no Y overflow in small previews
-    const visibleLeads = leads.slice(0, tableVisible);
-    const moreCount = Math.max(0, leads.length - tableVisible);
+    const visible = requests.slice(0, 4);
+    const moreCount = Math.max(0, requests.length - 4);
 
     return (
         <div className="relative h-full w-full overflow-hidden">
@@ -138,21 +173,9 @@ export function ToolsPreview() {
                         "linear-gradient(135deg, rgba(240,253,250,1) 0%, rgba(224,231,255,1) 38%, rgba(255,241,242,1) 100%)",
                 }}
             />
-            <div
-                aria-hidden
-                className="pointer-events-none absolute -top-24 -left-24 h-[320px] w-[320px] rounded-full blur-[85px]"
-                style={{ background: "rgba(34,211,238,0.26)" }}
-            />
-            <div
-                aria-hidden
-                className="pointer-events-none absolute -bottom-24 -right-24 h-[380px] w-[380px] rounded-full blur-[95px]"
-                style={{ background: "rgba(168,85,247,0.18)" }}
-            />
-            <div
-                aria-hidden
-                className="pointer-events-none absolute left-[24%] top-[56%] h-[320px] w-[320px] rounded-full blur-[95px]"
-                style={{ background: "rgba(34,197,94,0.16)" }}
-            />
+            <div aria-hidden className="pointer-events-none absolute -top-24 -left-24 h-[320px] w-[320px] rounded-full blur-[85px]" style={{ background: "rgba(34,211,238,0.26)" }} />
+            <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-24 h-[380px] w-[380px] rounded-full blur-[95px]" style={{ background: "rgba(168,85,247,0.18)" }} />
+            <div aria-hidden className="pointer-events-none absolute left-[24%] top-[56%] h-[320px] w-[320px] rounded-full blur-[95px]" style={{ background: "rgba(34,197,94,0.16)" }} />
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 opacity-[0.16]"
@@ -165,41 +188,21 @@ export function ToolsPreview() {
                 }}
             />
 
-            {/* ✅ Fit-to-height layout (no Y overflow) */}
             <div className="relative z-[1] h-full w-full p-5 flex flex-col min-h-0">
                 {/* header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-32 rounded-xl border border-black/10 bg-white/70 backdrop-blur-sm" />
-                        <div className="h-8 w-24 rounded-xl border border-black/10 bg-white/60 backdrop-blur-sm" />
+                        <IconPill icon={Search} label="Search" onClick={() => fireToast("Search", "Opened")} />
+                        <IconPill icon={SlidersHorizontal} label="Filter" onClick={() => fireToast("Filter", "Applied")} />
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <motion.button
-                            type="button"
-                            whileHover={{ y: -1 }}
-                            whileTap={{ scale: 0.99 }}
-                            className="h-8 px-3 rounded-xl border border-black/10 bg-white/70 text-[11px] font-semibold cursor-pointer"
-                            style={{ letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(8,10,20,0.86)" }}
-                            onClick={() => fireToast("Synced", "2 updates pushed")}
-                        >
-                            Sync
-                        </motion.button>
-
-                        <motion.button
-                            type="button"
-                            whileHover={{ y: -1 }}
-                            whileTap={{ scale: 0.99 }}
-                            className="h-8 px-3 rounded-xl border border-black/10 bg-white/80 text-[11px] font-semibold cursor-pointer"
-                            style={{ letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(8,10,20,0.90)" }}
-                            onClick={() => fireToast("New lead", "Draft created")}
-                        >
-                            + Lead
-                        </motion.button>
+                        <IconBtn icon={Zap} label="Update" onClick={() => fireToast("Updated", "Inbox refreshed")} />
+                        <IconBtn icon={ChevronRight} label="New" onClick={() => fireToast("New", "Request created")} strong />
                     </div>
                 </div>
 
-                {/* KPIs (compact) */}
+                {/* KPIs */}
                 <div className="mt-4 grid grid-cols-3 gap-3">
                     {kpis.map((k) => (
                         <motion.div
@@ -209,11 +212,11 @@ export function ToolsPreview() {
                             className="rounded-2xl border border-black/10 bg-white/65 backdrop-blur-sm px-4 py-3"
                             style={{ boxShadow: "0 14px 44px rgba(0,0,0,0.10)" }}
                         >
-                            <div
-                                className="text-[10px] font-semibold"
-                                style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.55)" }}
-                            >
-                                {k.label}
+                            <div className="flex items-center gap-2" style={{ color: "rgba(8,10,20,0.55)" }}>
+                                <k.icon size={14} style={{ opacity: 0.8 }} />
+                                <div className="text-[10px] font-semibold" style={{ letterSpacing: "0.22em", textTransform: "uppercase" }}>
+                                    {k.label}
+                                </div>
                             </div>
                             <div className="mt-2 text-[18px] font-semibold" style={{ color: "rgba(8,10,20,0.92)" }}>
                                 {k.value}
@@ -231,41 +234,37 @@ export function ToolsPreview() {
                     ))}
                 </div>
 
-                {/* ✅ table: fills remaining height, no overflow */}
+                {/* list */}
                 <div
                     className="mt-4 flex-1 min-h-0 rounded-2xl border border-black/10 bg-white/55 backdrop-blur-sm overflow-hidden"
                     style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.10)" }}
                 >
-                    {/* header row */}
                     <div className="flex items-center gap-3 border-b border-black/10 bg-white/55 px-4 py-3">
-                        <div
-                            className="text-[10px] font-semibold"
-                            style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.62)" }}
-                        >
-                            Leads
-                        </div>
-                        <div
-                            className="ml-1 h-7 px-3 rounded-full border border-black/10 bg-white/65 text-[10px] font-semibold flex items-center"
-                            style={{ color: "rgba(8,10,20,0.62)" }}
-                        >
-                            {leads.length}
+                        <div className="flex items-center gap-2">
+                            <Inbox size={14} style={{ opacity: 0.75, color: "rgba(8,10,20,0.68)" }} />
+                            <div className="text-[10px] font-semibold" style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.62)" }}>
+                                Requests
+                            </div>
+                            <div className="ml-1 h-7 px-3 rounded-full border border-black/10 bg-white/65 text-[10px] font-semibold flex items-center" style={{ color: "rgba(8,10,20,0.62)" }}>
+                                {requests.length}
+                            </div>
                         </div>
 
                         <div className="ml-auto flex items-center gap-2">
-                            <div className="h-8 w-28 rounded-xl border border-black/10 bg-white/55" />
-                            <div className="h-8 w-20 rounded-xl border border-black/10 bg-white/65" />
+                            <TinyBtn icon={Search} onClick={() => fireToast("Search", "Opened")} />
+                            <TinyBtn icon={SlidersHorizontal} onClick={() => fireToast("Filter", "Opened")} />
                         </div>
                     </div>
 
-                    {/* rows */}
                     <div className="p-4 space-y-2">
-                        {visibleLeads.map((l) => {
-                            const active = l.id === selectedId;
-                            const chip = statusChip(l.status);
+                        {visible.map((r) => {
+                            const active = r.id === selectedId;
+                            const st = statusChip(r.status);
+                            const b = budgetChip(r.budget);
 
                             return (
                                 <motion.div
-                                    key={l.id}
+                                    key={r.id}
                                     whileHover={{ y: -1 }}
                                     transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
                                     className="group flex items-center gap-3 rounded-2xl px-4 py-3 border cursor-pointer select-none"
@@ -273,63 +272,62 @@ export function ToolsPreview() {
                                         borderColor: active ? "rgba(0,0,0,0.14)" : "rgba(0,0,0,0.10)",
                                         background: active ? "rgba(255,255,255,0.78)" : "rgba(255,255,255,0.62)",
                                     }}
-                                    onClick={() => openLead(l.id)}
+                                    onClick={() => openRequest(r.id)}
                                 >
-                                    <div className="h-9 w-9 rounded-full border border-black/10 bg-black/5 relative overflow-hidden" />
+                                    <InitialBadge name={r.company} />
 
                                     <div className="flex-1 min-w-0">
                                         <div className="text-[13px] font-semibold truncate" style={{ color: "rgba(8,10,20,0.90)" }}>
-                                            {l.company}
+                                            {r.company}
                                         </div>
-                                        <div className="mt-1 text-[12px]" style={{ color: "rgba(8,10,20,0.62)" }}>
-                                            {l.name} • {l.last}
+                                        <div className="mt-1 text-[12px] flex items-center gap-2" style={{ color: "rgba(8,10,20,0.62)" }}>
+                                            <span className="truncate">{r.name}</span>
+                                            <span style={{ opacity: 0.5 }}>•</span>
+                                            <span className="inline-flex items-center gap-1">
+                                                <Clock size={12} style={{ opacity: 0.75 }} />
+                                                {r.last}
+                                            </span>
                                         </div>
                                     </div>
 
                                     <div
-                                        className="h-7 px-3 rounded-full border flex items-center text-[10px] font-semibold"
+                                        className="h-7 px-3 rounded-full border flex items-center gap-2 text-[10px] font-semibold"
                                         style={{
-                                            background: chip.bg,
-                                            borderColor: chip.ring,
-                                            color: chip.text,
+                                            background: st.bg,
+                                            borderColor: st.ring,
+                                            color: st.text,
                                             letterSpacing: "0.14em",
                                             textTransform: "uppercase",
                                             whiteSpace: "nowrap",
                                         }}
                                     >
-                                        {l.status}
+                                        <st.icon size={13} style={{ opacity: 0.85 }} />
+                                        {r.status}
                                     </div>
 
                                     <div
-                                        className="h-7 px-3 rounded-full border border-black/10 bg-black/5 text-[10px] font-semibold flex items-center"
-                                        style={{ color: "rgba(8,10,20,0.70)", whiteSpace: "nowrap" }}
-                                    >
-                                        {l.value}
-                                    </div>
-
-                                    <motion.button
-                                        type="button"
-                                        whileHover={{ y: -1 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        className="h-7 w-9 rounded-xl border border-black/10 bg-black/5 cursor-pointer"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            fireToast("Action", "Delete menu (demo)");
+                                        className="h-7 px-3 rounded-full border flex items-center gap-2 text-[10px] font-semibold"
+                                        style={{
+                                            background: b.bg,
+                                            borderColor: b.ring,
+                                            color: b.text,
+                                            letterSpacing: "0.14em",
+                                            textTransform: "uppercase",
+                                            whiteSpace: "nowrap",
                                         }}
-                                        title="Delete"
-                                    />
+                                    >
+                                        <LayoutTemplate size={13} style={{ opacity: 0.8 }} />
+                                        {r.budget}
+                                    </div>
                                 </motion.div>
                             );
                         })}
 
                         {moreCount > 0 && (
                             <div className="pt-1">
-                                <div
-                                    className="h-10 rounded-2xl border border-black/10 bg-white/55 flex items-center justify-between px-4"
-                                    style={{ color: "rgba(8,10,20,0.62)" }}
-                                >
+                                <div className="h-10 rounded-2xl border border-black/10 bg-white/55 flex items-center justify-between px-4" style={{ color: "rgba(8,10,20,0.62)" }}>
                                     <div className="text-[12px] font-semibold" style={{ letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                                        + {moreCount} more hidden
+                                        + {moreCount} more
                                     </div>
                                     <div className="h-2 w-24 rounded" style={{ background: "rgba(0,0,0,0.06)" }} />
                                 </div>
@@ -338,22 +336,14 @@ export function ToolsPreview() {
                     </div>
                 </div>
 
-                {/* ✅ bottom actions are now in-flow (no absolute overlay) */}
+                {/* bottom actions */}
                 <div className="mt-3 flex items-center justify-between">
-                    <motion.div
-                        whileHover={{ y: -1 }}
-                        className="h-9 w-36 rounded-xl border border-black/10 bg-white/55 backdrop-blur-sm cursor-pointer"
-                        onClick={() => fireToast("Filter", "Qualified leads")}
-                    />
-                    <motion.div
-                        whileHover={{ y: -1 }}
-                        className="h-9 w-24 rounded-xl border border-black/10 bg-white/65 backdrop-blur-sm cursor-pointer"
-                        onClick={() => fireToast("Export", "CSV prepared")}
-                    />
+                    <IconBtn icon={SlidersHorizontal} label="Filter" onClick={() => fireToast("Filter", "Applied")} subtle />
+                    <IconBtn icon={Download} label="Export" onClick={() => fireToast("Export", "Prepared")} subtle />
                 </div>
             </div>
 
-            {/* ✅ drawer stays inside preview, but doesn't force page overflow */}
+            {/* drawer */}
             <AnimatePresence>
                 {drawerOpen && selected && (
                     <>
@@ -383,67 +373,95 @@ export function ToolsPreview() {
                                 <div className="p-4 border-b border-black/10 bg-white/70">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <div
-                                                className="text-[10px] font-semibold"
-                                                style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.55)" }}
-                                            >
-                                                Lead details
+                                            <div className="text-[10px] font-semibold" style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.55)" }}>
+                                                Request
                                             </div>
                                             <div className="mt-2 text-[16px] font-semibold truncate" style={{ color: "rgba(8,10,20,0.92)" }}>
                                                 {selected.company}
                                             </div>
-                                            <div className="mt-1 text-[13px]" style={{ color: "rgba(8,10,20,0.62)" }}>
-                                                {selected.name} • {selected.last}
+                                            <div className="mt-1 text-[13px] flex items-center gap-2" style={{ color: "rgba(8,10,20,0.62)" }}>
+                                                <span className="truncate">{selected.name}</span>
+                                                <span style={{ opacity: 0.5 }}>•</span>
+                                                <span className="inline-flex items-center gap-1">
+                                                    <Clock size={12} style={{ opacity: 0.75 }} />
+                                                    {selected.last}
+                                                </span>
                                             </div>
                                         </div>
 
-                                        <motion.button
-                                            type="button"
-                                            whileHover={{ y: -1 }}
-                                            whileTap={{ scale: 0.99 }}
-                                            className="h-9 w-9 rounded-xl border border-black/10 bg-black/5 cursor-pointer"
-                                            onClick={() => setDrawerOpen(false)}
-                                            title="Close"
-                                        />
+                                        <TinyBtn icon={ChevronRight} onClick={() => setDrawerOpen(false)} />
                                     </div>
 
                                     <div className="mt-3 flex items-center gap-2">
-                                        <div
-                                            className="h-7 px-3 rounded-full border border-black/10 bg-black/5 text-[10px] font-semibold flex items-center"
-                                            style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(8,10,20,0.70)" }}
-                                        >
-                                            {selected.value}
-                                        </div>
-
-                                        <div
-                                            className="h-7 px-3 rounded-full border flex items-center text-[10px] font-semibold"
-                                            style={{
-                                                background: statusChip(selected.status).bg,
-                                                borderColor: statusChip(selected.status).ring,
-                                                color: statusChip(selected.status).text,
-                                                letterSpacing: "0.14em",
-                                                textTransform: "uppercase",
-                                            }}
-                                        >
-                                            {selected.status}
-                                        </div>
+                                        <Chip icon={Calendar} label={selected.timeline} />
+                                        <Chip icon={Layers} label={`Budget ${selected.budget}`} />
+                                        <Chip icon={statusChip(selected.status).icon} label={selected.status} tint={statusChip(selected.status).bg} />
                                     </div>
                                 </div>
 
-                                {/* ✅ scroll-free: compact fields + fixed action grid */}
                                 <div className="p-4 space-y-3 flex-1 min-h-0">
-                                    <Field label="Email" value={selected.email} />
-                                    <Field label="Phone" value={selected.phone} />
-                                    <Field label="Note" value={selected.note} />
+                                    <Field icon={Mail} label="Email" value={selected.email} />
+                                    <Field icon={Phone} label="Phone" value={selected.phone} />
+
+                                    <div className="rounded-2xl border border-black/10 bg-white/60 px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <LayoutTemplate size={14} style={{ opacity: 0.7 }} />
+                                            <div className="text-[10px] font-semibold" style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.55)" }}>
+                                                Scope
+                                            </div>
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {selected.scope.slice(0, 4).map((s) => (
+                                                <span
+                                                    key={s}
+                                                    className="h-7 px-3 rounded-full border border-black/10 bg-black/5 text-[10px] font-semibold inline-flex items-center gap-2"
+                                                    style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(8,10,20,0.72)" }}
+                                                >
+                                                    <Sparkles size={12} style={{ opacity: 0.75 }} />
+                                                    {s}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-black/10 bg-white/60 px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <FileText size={14} style={{ opacity: 0.7 }} />
+                                            <div className="text-[10px] font-semibold" style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.55)" }}>
+                                                Message
+                                            </div>
+                                        </div>
+                                        <div className="mt-2 text-[13px] font-semibold" style={{ color: "rgba(8,10,20,0.86)", lineHeight: 1.35 }}>
+                                            {selected.message}
+                                        </div>
+                                    </div>
 
                                     <div className="pt-1 grid grid-cols-2 gap-2">
-                                        <DrawerBtn onClick={() => fireToast("Action", "Call (demo)")}>Call</DrawerBtn>
-                                        <DrawerBtn onClick={() => fireToast("Action", "Email (demo)")}>Email</DrawerBtn>
-                                        <DrawerBtn onClick={() => fireToast("Action", "Move stage (demo)")}>Move</DrawerBtn>
-                                        <DrawerBtn danger onClick={() => fireToast("Action", "Delete (demo)")}>
-                                            Delete
-                                        </DrawerBtn>
+                                        <ActionBtn icon={Calendar} onClick={() => fireToast("Scheduled", "Call booked")}>
+                                            Schedule
+                                        </ActionBtn>
+                                        <ActionBtn icon={Send} onClick={() => fireToast("Sent", "Reply prepared")}>
+                                            Reply
+                                        </ActionBtn>
+                                        <ActionBtn icon={FileText} onClick={() => fireToast("Prepared", "Proposal draft")}>
+                                            Proposal
+                                        </ActionBtn>
+                                        <ActionBtn icon={ExternalLink} onClick={() => fireToast("Opened", selected.website ?? "Website")}>
+                                            Website
+                                        </ActionBtn>
                                     </div>
+
+                                    <div className="mt-2 rounded-2xl border border-black/10 bg-white/55 px-4 py-3">
+                                        <div className="flex items-center gap-2" style={{ color: "rgba(8,10,20,0.62)" }}>
+                                            <Globe size={14} style={{ opacity: 0.75 }} />
+                                            <div className="text-[12px] font-semibold">{selected.website ?? "—"}</div>
+                                            <div className="ml-auto flex items-center gap-1">
+                                                <MapPin size={14} style={{ opacity: 0.65 }} />
+                                                <div className="text-[12px] font-semibold">Switzerland</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </motion.div>
@@ -478,16 +496,122 @@ export function ToolsPreview() {
     );
 }
 
-/* -------------------- small bits -------------------- */
+/* -------------------- bits -------------------- */
 
-function Field({ label, value }: { label: string; value: string }) {
+function InitialBadge({ name }: { name: string }) {
+    const initials = name
+        .split(" ")
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase())
+        .join("");
+
+    return (
+        <div
+            className="h-9 w-9 rounded-full border border-black/10 bg-white/70 flex items-center justify-center"
+            style={{ boxShadow: "0 10px 26px rgba(0,0,0,0.08)" }}
+        >
+            <span style={{ fontSize: 12, fontWeight: 900, color: "rgba(8,10,20,0.82)", letterSpacing: "0.08em" }}>
+                {initials || "—"}
+            </span>
+        </div>
+    );
+}
+
+function TinyBtn({
+    icon: Icon,
+    onClick,
+}: {
+    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+    onClick: () => void;
+}) {
+    return (
+        <motion.button
+            type="button"
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            className="h-8 w-8 rounded-xl border border-black/10 bg-white/65 backdrop-blur-sm inline-flex items-center justify-center cursor-pointer"
+            onClick={onClick}
+            title="Action"
+        >
+            <Icon size={14} style={{ opacity: 0.8, color: "rgba(8,10,20,0.78)" }} />
+        </motion.button>
+    );
+}
+
+function IconBtn({
+    icon: Icon,
+    label,
+    onClick,
+    strong,
+    subtle,
+}: {
+    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+    label: string;
+    onClick: () => void;
+    strong?: boolean;
+    subtle?: boolean;
+}) {
+    return (
+        <motion.button
+            type="button"
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.99 }}
+            className="h-9 px-3 rounded-xl border border-black/10 font-semibold cursor-pointer inline-flex items-center gap-2"
+            style={{
+                background: strong ? "rgba(8,10,20,0.92)" : subtle ? "rgba(255,255,255,0.60)" : "rgba(255,255,255,0.75)",
+                color: strong ? "white" : "rgba(8,10,20,0.86)",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                fontSize: 11,
+            }}
+            onClick={onClick}
+        >
+            <Icon size={14} style={{ opacity: strong ? 0.95 : 0.85 }} />
+            {label}
+        </motion.button>
+    );
+}
+
+function IconPill({
+    icon: Icon,
+    label,
+    onClick,
+}: {
+    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+    label: string;
+    onClick: () => void;
+}) {
+    return (
+        <motion.button
+            type="button"
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.99 }}
+            className="h-9 px-3 rounded-xl border border-black/10 bg-white/65 backdrop-blur-sm font-semibold cursor-pointer inline-flex items-center gap-2"
+            style={{ color: "rgba(8,10,20,0.80)", letterSpacing: "0.18em", textTransform: "uppercase", fontSize: 11 }}
+            onClick={onClick}
+        >
+            <Icon size={14} style={{ opacity: 0.85 }} />
+            {label}
+        </motion.button>
+    );
+}
+
+function Field({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+    label: string;
+    value: string;
+}) {
     return (
         <div className="rounded-2xl border border-black/10 bg-white/60 px-4 py-3">
-            <div
-                className="text-[10px] font-semibold"
-                style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.55)" }}
-            >
-                {label}
+            <div className="flex items-center gap-2">
+                <Icon size={14} style={{ opacity: 0.7, color: "rgba(8,10,20,0.78)" }} />
+                <div className="text-[10px] font-semibold" style={{ letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(8,10,20,0.55)" }}>
+                    {label}
+                </div>
             </div>
             <div className="mt-2 text-[13px] font-semibold" style={{ color: "rgba(8,10,20,0.86)" }}>
                 {value}
@@ -496,32 +620,58 @@ function Field({ label, value }: { label: string; value: string }) {
     );
 }
 
-function DrawerBtn({
+function ActionBtn({
     children,
     onClick,
-    danger,
+    icon: Icon,
 }: {
     children: React.ReactNode;
     onClick: () => void;
-    danger?: boolean;
+    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
 }) {
     return (
         <motion.button
             type="button"
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.99 }}
-            className="h-10 rounded-xl font-semibold cursor-pointer border"
+            className="h-10 rounded-xl font-semibold cursor-pointer border inline-flex items-center justify-center gap-2"
             style={{
-                background: danger ? "rgba(255,42,42,0.12)" : "rgba(0,0,0,0.05)",
-                borderColor: danger ? "rgba(255,42,42,0.22)" : "rgba(0,0,0,0.10)",
-                color: danger ? "rgba(255,42,42,0.92)" : "rgba(8,10,20,0.84)",
+                background: "rgba(0,0,0,0.05)",
+                borderColor: "rgba(0,0,0,0.10)",
+                color: "rgba(8,10,20,0.84)",
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
                 fontSize: 11,
             }}
             onClick={onClick}
         >
+            <Icon size={14} style={{ opacity: 0.85 }} />
             {children}
         </motion.button>
+    );
+}
+
+function Chip({
+    icon: Icon,
+    label,
+    tint,
+}: {
+    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+    label: string;
+    tint?: string;
+}) {
+    return (
+        <div
+            className="h-7 px-3 rounded-full border border-black/10 text-[10px] font-semibold inline-flex items-center gap-2"
+            style={{
+                background: tint ?? "rgba(0,0,0,0.05)",
+                color: "rgba(8,10,20,0.78)",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+            }}
+        >
+            <Icon size={14} style={{ opacity: 0.85 }} />
+            {label}
+        </div>
     );
 }

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, Palette, Type, LayoutGrid, Sparkles, Bookmark, Copy, Check } from "lucide-react";
+import { BookOpen, Palette, Type, LayoutGrid, Sparkles, Copy, Check } from "lucide-react";
 
 type ChapterId = "overview" | "colors" | "type" | "components";
 
@@ -110,10 +110,10 @@ export function BrandingPreview() {
 
                         <div className="min-w-0">
                             <div className="text-[10px] font-semibold uppercase truncate" style={{ color: theme.sub, letterSpacing: "0.22em" }}>
-                                Branding guidebook
+                                Brand guidebook
                             </div>
                             <div className="mt-1 font-semibold truncate" style={{ color: theme.ink, fontSize: 15 }}>
-                                WebX Design System
+                                Design System
                             </div>
                         </div>
                     </div>
@@ -131,7 +131,7 @@ export function BrandingPreview() {
                             textTransform: "uppercase",
                             fontSize: 10,
                         }}
-                        onClick={() => copyToClipboard("tokens.json (demo)", "tokens")}
+                        onClick={() => copyToClipboard("brand-tokens.json", "tokens")}
                     >
                         <span className="inline-flex items-center gap-2">
                             {copied === "tokens" ? <Check size={14} /> : <Copy size={14} />}
@@ -140,7 +140,7 @@ export function BrandingPreview() {
                     </motion.button>
                 </div>
 
-                {/* compact chapter header (bigger, but not tall) */}
+                {/* compact chapter header */}
                 <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                         <div className="text-[10px] font-semibold uppercase" style={{ color: theme.sub, letterSpacing: "0.22em" }}>
@@ -151,11 +151,8 @@ export function BrandingPreview() {
                         </div>
                     </div>
 
-                    {/* tabs (icons only, stays compact) */}
-                    <div
-                        className="h-10 rounded-full border p-1 flex items-center gap-1 shrink-0"
-                        style={{ background: "rgba(255,255,255,0.62)", borderColor: theme.stroke }}
-                    >
+                    {/* tabs */}
+                    <div className="h-10 rounded-full border p-1 flex items-center gap-1 shrink-0" style={{ background: "rgba(255,255,255,0.62)", borderColor: theme.stroke }}>
                         <IconTab active={chapter === "overview"} onClick={() => setChapter("overview")} icon={<BookOpen size={16} />} theme={theme} />
                         <IconTab active={chapter === "colors"} onClick={() => setChapter("colors")} icon={<Palette size={16} />} theme={theme} />
                         <IconTab active={chapter === "type"} onClick={() => setChapter("type")} icon={<Type size={16} />} theme={theme} />
@@ -181,7 +178,7 @@ export function BrandingPreview() {
                             <div className="px-4 py-3 border-b flex items-center justify-between gap-3" style={{ borderColor: theme.stroke, background: "rgba(255,255,255,0.54)" }}>
                                 <div className="min-w-0">
                                     <div className="text-[10px] font-semibold uppercase" style={{ color: theme.sub, letterSpacing: "0.22em" }}>
-                                        WebX Guidebook
+                                        Brand system
                                     </div>
                                     <div className="mt-1 text-[12px] truncate" style={{ color: "rgba(8,10,20,0.68)" }}>
                                         Page {chapterMeta.page} • {chapterMeta.label}
@@ -195,10 +192,10 @@ export function BrandingPreview() {
                                 </div>
                             </div>
 
-                            {/* ✅ BIG content only: one hero + one strip */}
+                            {/* content */}
                             <div className="p-4 flex-1 min-h-0 flex flex-col gap-3">
                                 <AnimatePresence mode="wait" initial={false}>
-                                    {/* ---------------- OVERVIEW ---------------- */}
+                                    {/* OVERVIEW */}
                                     {chapter === "overview" && (
                                         <motion.div
                                             key="overview"
@@ -228,7 +225,7 @@ export function BrandingPreview() {
                                                     <div className="mt-2 flex items-end justify-between gap-3">
                                                         <div className="min-w-0">
                                                             <div className="font-semibold truncate" style={{ color: theme.ink, fontSize: 20, letterSpacing: "-0.02em" }}>
-                                                                WebX
+                                                                Studio
                                                             </div>
                                                             <div className="mt-1 text-[12px]" style={{ color: "rgba(8,10,20,0.66)" }}>
                                                                 Clean. Sharp. Premium.
@@ -241,19 +238,22 @@ export function BrandingPreview() {
 
                                             <BigStrip theme={theme} label="Principles">
                                                 <BigPill theme={theme} bg={theme.cyan}>
-                                                    Clean <br />hierarchy
+                                                    Clean <br />
+                                                    hierarchy
                                                 </BigPill>
                                                 <BigPill theme={theme} bg={theme.violet}>
-                                                    Soft glass <br />surfaces
+                                                    Soft glass <br />
+                                                    surfaces
                                                 </BigPill>
                                                 <BigPill theme={theme} bg={theme.rose}>
-                                                    One accent <br />per moment
+                                                    One accent <br />
+                                                    per moment
                                                 </BigPill>
                                             </BigStrip>
                                         </motion.div>
                                     )}
 
-                                    {/* ---------------- COLORS ---------------- */}
+                                    {/* COLORS */}
                                     {chapter === "colors" && (
                                         <motion.div
                                             key="colors"
@@ -270,34 +270,10 @@ export function BrandingPreview() {
                                                 accent="linear-gradient(135deg, rgba(34,211,238,0.32), rgba(37,99,235,0.26), rgba(254,249,195,0.22))"
                                             >
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <BigColor
-                                                        theme={theme}
-                                                        name="Ink"
-                                                        hex="#080A14"
-                                                        copied={copied === "Ink"}
-                                                        onCopy={() => copyToClipboard("#080A14", "Ink")}
-                                                    />
-                                                    <BigColor
-                                                        theme={theme}
-                                                        name="Cloud"
-                                                        hex="#F8FAFC"
-                                                        copied={copied === "Cloud"}
-                                                        onCopy={() => copyToClipboard("#F8FAFC", "Cloud")}
-                                                    />
-                                                    <BigColor
-                                                        theme={theme}
-                                                        name="Cyan"
-                                                        hex="#22D3EE"
-                                                        copied={copied === "Cyan"}
-                                                        onCopy={() => copyToClipboard("#22D3EE", "Cyan")}
-                                                    />
-                                                    <BigColor
-                                                        theme={theme}
-                                                        name="Blue"
-                                                        hex="#2563EB"
-                                                        copied={copied === "Blue"}
-                                                        onCopy={() => copyToClipboard("#2563EB", "Blue")}
-                                                    />
+                                                    <BigColor theme={theme} name="Ink" hex="#080A14" copied={copied === "Ink"} onCopy={() => copyToClipboard("#080A14", "Ink")} />
+                                                    <BigColor theme={theme} name="Cloud" hex="#F8FAFC" copied={copied === "Cloud"} onCopy={() => copyToClipboard("#F8FAFC", "Cloud")} />
+                                                    <BigColor theme={theme} name="Cyan" hex="#22D3EE" copied={copied === "Cyan"} onCopy={() => copyToClipboard("#22D3EE", "Cyan")} />
+                                                    <BigColor theme={theme} name="Blue" hex="#2563EB" copied={copied === "Blue"} onCopy={() => copyToClipboard("#2563EB", "Blue")} />
                                                 </div>
 
                                                 <div className="mt-3 h-11 rounded-2xl border" style={{ background: theme.bg, borderColor: theme.stroke }} />
@@ -311,7 +287,7 @@ export function BrandingPreview() {
                                         </motion.div>
                                     )}
 
-                                    {/* ---------------- TYPE ---------------- */}
+                                    {/* TYPE */}
                                     {chapter === "type" && (
                                         <motion.div
                                             key="type"
@@ -379,7 +355,7 @@ export function BrandingPreview() {
                                         </motion.div>
                                     )}
 
-                                    {/* ---------------- UI ---------------- */}
+                                    {/* UI */}
                                     {chapter === "components" && (
                                         <motion.div
                                             key="components"
@@ -392,7 +368,7 @@ export function BrandingPreview() {
                                             <HeroPanel
                                                 theme={theme}
                                                 title="UI kit"
-                                                subtitle="Big components (not tiny)"
+                                                subtitle="Big components"
                                                 accent="linear-gradient(135deg, rgba(34,211,238,0.26), rgba(254,249,195,0.22), rgba(168,85,247,0.18))"
                                             >
                                                 <div className="rounded-2xl border p-5" style={{ background: theme.paper, borderColor: theme.stroke }}>
@@ -445,7 +421,7 @@ export function BrandingPreview() {
                     </div>
                 </div>
 
-                {/* outer footer */}
+                {/* outer footer (keep clean, no labels) */}
                 <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="h-9 w-28 rounded-full" style={{ background: "rgba(0,0,0,0.06)" }} />
@@ -670,7 +646,7 @@ function BigColor({
             onClick={onCopy}
             className="rounded-2xl border p-4 text-left cursor-pointer"
             style={{ background: "rgba(255,255,255,0.62)", borderColor: theme.stroke }}
-            title="Copy hex"
+            title="Copy"
         >
             <div className="flex items-center gap-3">
                 <div className="h-11 w-11 rounded-2xl border" style={{ background: hex, borderColor: "rgba(0,0,0,0.12)" }} />
@@ -792,7 +768,6 @@ function BigTile({ theme, title }: { theme: Theme; title: string }) {
             </div>
             <div className="mt-3 h-3 w-[80%] rounded" style={{ background: "rgba(0,0,0,0.06)" }} />
             <div className="mt-2 h-3 w-[64%] rounded" style={{ background: "rgba(0,0,0,0.06)" }} />
-
         </motion.div>
     );
 }

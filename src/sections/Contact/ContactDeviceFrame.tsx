@@ -4,7 +4,6 @@ import { animate, motion, useMotionTemplate, useMotionValue } from "framer-motio
 import { ContactFormScreen } from "./ContactFormScreen";
 
 function Pencil({ attached = true }: { attached?: boolean }) {
-    // ✅ background tokens (ONLY color/gradient change; no physical/motion changes)
     const BODY_BG_ATTACHED =
         "linear-gradient(90deg," +
         " #7d7d7d 0%," +
@@ -13,7 +12,6 @@ function Pencil({ attached = true }: { attached?: boolean }) {
         " #ececec 62%," +
         " #9c9c9c 100%)";
 
-    // optional: a slightly cleaner/brighter detached look (keeps your lighting logic intact)
     const BODY_BG_DETACHED =
         "linear-gradient(90deg," +
         " #8e8e8e 0%," +
@@ -58,7 +56,6 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                 transformOrigin: "top right",
             }}
         >
-            {/* ✅ body */}
             <div
                 className={[
                     "relative h-[460px] w-[20px] rounded-full",
@@ -66,11 +63,9 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                 ].join(" ")}
                 style={{
                     transform: "translateZ(18px)",
-                    // ✅ swap gradient depending on attached state
                     background: attached ? BODY_BG_ATTACHED : BODY_BG_DETACHED,
                 }}
             >
-                {/* smooth body shadow swap */}
                 <motion.div
                     aria-hidden
                     className="absolute inset-0 rounded-full pointer-events-none"
@@ -94,7 +89,6 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                     }}
                 />
 
-                {/* lighting wash (already smooth) */}
                 <motion.div
                     aria-hidden
                     className="absolute inset-0 rounded-full"
@@ -108,7 +102,6 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                     }}
                 />
 
-                {/* lighting wash (already smooth) */}
                 <motion.div
                     aria-hidden
                     className="absolute inset-0 rounded-full"
@@ -118,18 +111,15 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                     style={{
                         background:
                             "radial-gradient(circle at 0% 0%, rgb(255, 255, 255), rgb(0, 0, 0) 75%, rgb(0, 0, 0) 100%)",
-
                     }}
                 />
 
-                {/* ✅ TIP — single block + smooth lighting overlay (no crossfade layers) */}
                 <div className="absolute left-1/2 -translate-x-1/2 bottom-[-10px] h-[18px] w-[12px]">
                     <motion.div
                         className="absolute inset-0"
                         initial={false}
                         style={{
                             borderRadius: "0 0 999px 999px",
-                            // ✅ stable base (no swapping) — pick your "attached" look as the base
                             background:
                                 "linear-gradient(90deg," +
                                 " #cfcfcf 0%," +
@@ -139,14 +129,12 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                             border: "1px solid rgba(0,0,0,0.16)",
                         }}
                         animate={{
-                            // ✅ keep it subtle; this avoids “shadow popping”
                             boxShadow: attached
                                 ? "inset 2px 0 4px rgba(0,0,0,0.20), inset -2px 0 5px rgba(0,0,0,0.24)"
                                 : "inset 2px 0 4px rgba(0,0,0,0.14), inset -2px 0 5px rgba(0,0,0,0.16)",
                         }}
                         transition={{ type: "spring", stiffness: 220, damping: 26 }}
                     >
-                        {/* ✅ detached lighting overlay (only opacity animates) */}
                         <motion.div
                             aria-hidden
                             className="absolute inset-0"
@@ -155,7 +143,6 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                             transition={{ type: "spring", stiffness: 220, damping: 26 }}
                             style={{
                                 borderRadius: "0 0 999px 999px",
-                                // brighter wash + a slight spec strip inside
                                 background:
                                     "linear-gradient(90deg," +
                                     " rgba(255,255,255,0.55) 0%," +
@@ -167,7 +154,6 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                             }}
                         />
 
-                        {/* ✅ optional micro highlight (also only opacity animates) */}
                         <motion.div
                             aria-hidden
                             className="absolute left-[3px] top-[2px] bottom-[2px] w-[2px] rounded-full"
@@ -182,7 +168,6 @@ function Pencil({ attached = true }: { attached?: boolean }) {
                     </motion.div>
                 </div>
 
-                {/* micro-tip */}
                 <div className="absolute left-1/2 -translate-x-1/2 bottom-[-18px] h-[10px] w-[7px]">
                     <motion.div
                         aria-hidden
@@ -229,6 +214,19 @@ function PencilMagnetRail() {
 
 export function ContactDeviceFrame({ accent }: { accent: string }) {
     const [hovered, setHovered] = useState(false);
+
+    // ✅ Only render pen on devices with real hover + fine pointer (mouse/trackpad)
+    const [canHoverFine, setCanHoverFine] = useState(false);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+        const update = () => setCanHoverFine(!!mq.matches);
+
+        update();
+        mq.addEventListener?.("change", update);
+        return () => mq.removeEventListener?.("change", update);
+    }, []);
 
     const y = useMotionValue(0);
     const rx = useMotionValue(3);
@@ -324,14 +322,17 @@ export function ContactDeviceFrame({ accent }: { accent: string }) {
                     }}
                     onHoverEnd={() => {
                         setHovered(false);
-
                         stopLoop();
                         startLoop();
                     }}
                 >
-                    {/* Pencil + magnet rail (detach on hover) */}
-                    <PencilMagnetRail />
-                    <Pencil attached={!hovered} />
+                    {/* ✅ Pencil + magnet rail — ONLY on hover+fine pointer devices */}
+                    {canHoverFine && (
+                        <>
+                            <PencilMagnetRail />
+                            <Pencil attached={!hovered} />
+                        </>
+                    )}
 
                     {/* glow */}
                     <div

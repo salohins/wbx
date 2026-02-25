@@ -456,9 +456,7 @@ export function MobilePhoneFrame({
                     </div>
                   </div>
 
-                  <div className="absolute inset-0 z-30">
-                    <HoverGridOverlay enabled={clickable} />
-                  </div>
+
                 </div>
               </div>
             </div>

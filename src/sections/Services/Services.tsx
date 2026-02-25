@@ -54,28 +54,28 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
         <SnapSection
             sectionId="services"
             className="relative w-full "
-            title={"SERVICES"}
-            subtitle={"services subtitle"}
+            title={"Leistungen"}
             desktopAlign="center"
+            mobileSliderMode="peek"
         >
             {/* ✅ DESKTOP */}
             <div className="hidden lg:block w-full">
                 <div className="relative flex w-full items-center py-16 md:py-0">
-                    <div className="grid w-full grid-cols-12 items-start gap-y-14 md:gap-x-16">
+                    <div className="grid w-full grid-cols-12 items-center gap-y-14 md:gap-x-16">
                         <div className="col-span-12 md:col-span-6">
                             <div className="flex w-full justify-center md:justify-start">
                                 <PreviewFrame active={active} />
                             </div>
                         </div>
 
-                        <div className="col-span-12 md:col-span-6">
+                        <div className="col-span-12 md:col-span-6 h-full flex items-center ">
                             <LayoutGroup id="services-desktop">
                                 <motion.div
                                     layout
                                     transition={{
                                         layout: { type: "spring", stiffness: 520, damping: 44, mass: 0.9 },
                                     }}
-                                    className="space-y-3 md:space-y-4"
+                                    className="space-y-3 md:space-y-4 flex-column"
                                 >
                                     {SERVICES.map((s, idx) => (
                                         <SnapSection.Slide key={s.id} id={`services:${s.id}`} order={idx}>
@@ -526,7 +526,9 @@ function ServiceRow({
             <div className={["relative z-[1]", isMobile ? "flex h-full flex-col" : ""].join(" ")}>
                 {isMobile ? (
                     // ✅ MOBILE: explicit grid items (no contents)
-                    <div className={`grid grid-cols-[1fr_auto] ${gridGapMobile} items-start`}>
+                    <div
+                        className={`grid grid-cols-[minmax(0,1fr)_72px] ${gridGapMobile} items-start `}
+                    >
                         {/* left (index + title) */}
                         <div className="min-w-49">
                             <div className={`flex items-center ${headerGapMobile}`}>
@@ -559,10 +561,10 @@ function ServiceRow({
 
                         {/* icon (top right) */}
                         <motion.div
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 justify-self-start "
                             transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.9 }}
                         >
-                            <div className={`${iconScaleMobile} origin-top-right`}>
+                            <div className={`${iconScaleMobile} origin-top-left`}>
                                 <ServiceIcon type={serviceId} active={isHighlighted} />
                             </div>
                         </motion.div>
@@ -645,9 +647,7 @@ function ServiceRow({
                                 <div
                                     className={[
                                         "flex items-center",
-                                        isMobile
-                                            ? `${pillsGapMobile} flex-wrap `
-                                            : "flex-wrap gap-2",
+                                        isMobile ? `${pillsGapMobile} flex-wrap ` : "flex-wrap gap-2",
                                     ].join(" ")}
                                 >
                                     {meta.map((m) => (
@@ -656,9 +656,7 @@ function ServiceRow({
                                             className={[
                                                 "inline-flex items-center whitespace-nowrap",
                                                 isMobile ? "h-7 px-3 rounded-full" : "h-9 px-4 rounded-full",
-                                                isMobile
-                                                    ? `${pillTextMobile} tracking-[0.22em]`
-                                                    : "text-[11px] tracking-[0.24em]",
+                                                isMobile ? `${pillTextMobile} tracking-[0.22em]` : "text-[11px] tracking-[0.24em]",
                                                 "uppercase",
                                                 tone === "selected"
                                                     ? "bg-white/12 text-white/95"
@@ -669,49 +667,6 @@ function ServiceRow({
                                             {m}
                                         </span>
                                     ))}
-                                </div>
-
-                                <div
-                                    className={[
-                                        `${btnRowMtMobile} flex items-center`,
-                                        isMobile ? `flex-nowrap ${btnGapMobile}` : "flex-wrap gap-3",
-                                    ].join(" ")}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={[
-                                            isMobile ? "h-10 px-4" : "h-11 px-5",
-                                            isMobile
-                                                ? `${btnTextMobile} tracking-[0.24em]`
-                                                : "text-[11px] tracking-[0.26em]",
-                                            "rounded-full uppercase",
-                                            tone === "selected"
-                                                ? "bg-white/14 text-white hover:bg-white/18"
-                                                : "bg-black/5 text-neutral-900 hover:bg-black/10 dark:bg-white/14 dark:text-white dark:hover:bg-white/18",
-                                            "active:scale-[0.98] transition whitespace-nowrap",
-                                        ].join(" ")}
-                                    >
-                                        Learn more
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={[
-                                            isMobile ? "h-10 px-4" : "h-11 px-5",
-                                            isMobile
-                                                ? `${btnTextMobile} tracking-[0.24em]`
-                                                : "text-[11px] tracking-[0.26em]",
-                                            "rounded-full uppercase",
-                                            tone === "selected"
-                                                ? "bg-white text-neutral-900 hover:bg-white/90 shadow-sm"
-                                                : "bg-neutral-900 text-white hover:bg-neutral-900/90 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 shadow-sm",
-                                            "active:scale-[0.98] transition whitespace-nowrap",
-                                        ].join(" ")}
-                                    >
-                                        View cases →
-                                    </button>
                                 </div>
                             </div>
                         </motion.div>
