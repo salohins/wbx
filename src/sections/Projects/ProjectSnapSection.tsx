@@ -77,7 +77,7 @@ function ProjectCard({ project, accent }: { project: Project; accent: string }) 
   const primaryHref = useMemo(() => project.links?.[0]?.href, [project.links]);
 
   return (
-    <article className="w-full md:pt-10">
+    <article className="w-full  md:pt-5">
       <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-12 lg:gap-6 px-4 md:px-0">
         {/* Left (Desktop / Monitor) — hidden on mobile */}
         <div className="hidden lg:block lg:col-span-8 lg:-mt-2">

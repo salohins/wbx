@@ -3,12 +3,12 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from '../hooks/useTranslation'
 import {
-    HomeIcon,
-    InformationCircleIcon,
-    Squares2X2Icon,
-    EnvelopeIcon,
-    QuestionMarkCircleIcon,
-} from '@heroicons/react/24/outline'
+    House,
+    Info,
+    LayoutGrid,
+    Mail,
+    CircleHelp,
+} from 'lucide-react'
 
 type BottomNavProps = {
     variant?: 'bottom' | 'inline'
@@ -35,11 +35,9 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
         const navEl = navRef.current
         if (!navEl) return
 
-        // Match your routes. If you have nested routes, you can adjust this logic.
         const path = location.pathname === '/' ? '/' : location.pathname
         const activeEl =
             itemRefs.current[path] ||
-            // fallback: try to match first segment e.g. "/projects/123" -> "/projects"
             itemRefs.current['/' + path.split('/')[1]]
 
         if (!activeEl) {
@@ -50,9 +48,8 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
         const navRect = navEl.getBoundingClientRect()
         const itemRect = activeEl.getBoundingClientRect()
 
-        // ✅ Stable underline: constant width, centered under active item (no min-width / fixed item widths needed)
         const isMobile = window.innerWidth < 640
-        const LINE_W = isMobile ? 28 : 36 // tweak to taste
+        const LINE_W = isMobile ? 28 : 36
         const centerX = itemRect.left - navRect.left + itemRect.width / 2
         const left = centerX - LINE_W / 2
 
@@ -68,8 +65,6 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
     }, [updateIndicator])
 
     React.useEffect(() => {
-        // Keep it correct on resize / font load / layout shifts
-        // ✅ Throttle to animation frame to reduce mobile "resize jitter"
         let raf: number | null = null
         const schedule = () => {
             if (raf) cancelAnimationFrame(raf)
@@ -107,7 +102,7 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
                         dark:border-white/20
                         flex items-center justify-center
                         gap-0
-                        px-2 py-1
+                        px-2 py-2
                         w-fit
                         bg-neutral-100/50
                         dark:bg-neutral-800/50
@@ -129,7 +124,6 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
                 ${className}
             `}
         >
-            {/* Sliding underline sitting on the container border (doesn't affect layout) */}
             <motion.div
                 aria-hidden
                 className={`
@@ -155,7 +149,6 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
                     mass: 0.6,
                 }}
                 style={{
-                    // avoids subpixel fuzz on some screens
                     willChange: 'transform,width',
                 }}
             />
@@ -163,31 +156,31 @@ export function BottomNav({ variant = 'bottom', className = '' }: BottomNavProps
             <NavItem
                 to="/"
                 label={t.ui.navigation.home}
-                icon={HomeIcon}
+                icon={House}
                 setRef={(el) => (itemRefs.current['/'] = el)}
             />
             <NavItem
                 to="/about"
                 label={t.ui.navigation.info}
-                icon={InformationCircleIcon}
+                icon={Info}
                 setRef={(el) => (itemRefs.current['/about'] = el)}
             />
-            <NavItem
+            { /*<NavItem
                 to="/projects"
                 label={t.ui.navigation.projects}
-                icon={Squares2X2Icon}
+                icon={LayoutGrid}
                 setRef={(el) => (itemRefs.current['/projects'] = el)}
-            />
+            /> */}
             <NavItem
                 to="/faq"
                 label={t.ui.navigation.faq}
-                icon={QuestionMarkCircleIcon}
+                icon={CircleHelp}
                 setRef={(el) => (itemRefs.current['/faq'] = el)}
             />
             <NavItem
                 to="/contact"
                 label={t.ui.navigation.contact}
-                icon={EnvelopeIcon}
+                icon={Mail}
                 setRef={(el) => (itemRefs.current['/contact'] = el)}
             />
         </nav>
@@ -202,7 +195,7 @@ function NavItem({
 }: {
     to: string
     label: string
-    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
     setRef: (el: HTMLDivElement | null) => void
 }) {
     return (
@@ -212,8 +205,9 @@ function NavItem({
                     ref={setRef}
                     className={`
                         relative
-                        h-12
+                        h-12                        
                         px-3
+                        sm:px-5
                         rounded-xl
 
                         flex flex-col items-center justify-center
@@ -235,16 +229,17 @@ function NavItem({
                     `}
                 >
                     <Icon
+                        strokeWidth={2.2}
                         className={`
-                            h-6 w-6
+                            h-5.5 w-5.5
                             transition-transform
                             duration-300
                             [transition-timing-function:cubic-bezier(.2,.8,.2,1)]
-                            ${isActive ? 'scale-120 -translate-y-0.5' : 'scale-100'}
+                            ${isActive ? 'scale-[1.18] -translate-y-0.5' : 'scale-100'}
                         `}
                     />
 
-                    <span className="text-[11px] font-medium leading-none">{label}</span>
+                    <span className="text-nowrap text-[11px] font-medium leading-none">{label}</span>
                 </div>
             )}
         </NavLink>

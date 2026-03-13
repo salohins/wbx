@@ -1,7 +1,6 @@
 // screens/InfoScreen.tsx
 import React, { useEffect, useMemo, useRef } from "react";
 
-import { SnapSection } from "../components/SnapSection";
 import { useTranslation } from "../hooks/useTranslation";
 import { AboutParallaxBackgroundWebGL } from "../sections/About/AboutParallaxBackgroundWebGL";
 import type { ParallaxPose } from "../sections/About/AboutParallaxBackgroundWebGL";
@@ -20,24 +19,15 @@ function clamp01(n: number) {
     return n < 0 ? 0 : n > 1 ? 1 : n;
 }
 
-export function InfoScreen() {
-    // Keep it, but don't assume it's a function.
-    // (Your hook likely returns an object, so calling it throws.)
-    const t = useTranslation();
-
-    // ✅ same scroll container ref as HeroCanvas
+export function InfoScreenFixedBackground() {
     const containerRef = useScreenScrollRef();
 
-    // ✅ background reads this without rerenders
     const poseRef = useRef<ScrollPoseState>({
         activeIndex: 0,
         between: 0,
         sectionId: "about",
     });
 
-    // =========================
-    // DESKTOP POSES (default)
-    // =========================
     const desktopPoses: ParallaxPose[] = useMemo(
         () => [
             {
@@ -97,10 +87,6 @@ export function InfoScreen() {
         []
     );
 
-    // =========================
-    // MOBILE POSES (example)
-    // - calmer, less drift, less scaling
-    // =========================
     const mobilePoses: ParallaxPose[] = useMemo(
         () => [
             {
@@ -113,7 +99,7 @@ export function InfoScreen() {
                 depthScale: 0.12,
                 frontDrop: 120,
                 layerOverrides: [
-                    { id: "m1", y: 40, },
+                    { id: "m1", y: 40 },
                     { id: "m2", y: 20 },
                     { id: "m3", y: 30 },
                     { id: "m5", y: 30 },
@@ -161,7 +147,58 @@ export function InfoScreen() {
         let cleanup: (() => void) | null = null;
         let raf = 0;
 
-        const tryAttach = () => {
+        const readSectionsFromDocument = () => {
+            const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-section]"));
+            return nodes.map((el) => ({
+                el,
+                id: el.getAttribute("data-section") || "unknown",
+            }));
+        };
+
+        const attachVirtual = () => {
+            let sections = readSectionsFromDocument();
+            if (!sections.length) {
+                raf = requestAnimationFrame(attachVirtual);
+                return;
+            }
+
+            const recompute = () => {
+                sections = readSectionsFromDocument();
+            };
+
+            const onProgress = (ev: Event) => {
+                const e = ev as CustomEvent<{ progress: number }>;
+                const progress = clamp01(e.detail?.progress ?? 0);
+
+                const count = sections.length;
+                if (count <= 1) {
+                    poseRef.current.activeIndex = 0;
+                    poseRef.current.between = 0;
+                    poseRef.current.sectionId = sections[0]?.id ?? "about";
+                    return;
+                }
+
+                const idxFloat = progress * (count - 1);
+                const idx = Math.max(0, Math.min(count - 1, Math.floor(idxFloat)));
+                const between = clamp01(idxFloat - idx);
+
+                poseRef.current.activeIndex = idx;
+                poseRef.current.between = idx === count - 1 ? 0 : between;
+                poseRef.current.sectionId = sections[idx]?.id ?? "unknown";
+            };
+
+            onProgress(new CustomEvent("snap:progress", { detail: { progress: 0 } }));
+
+            window.addEventListener("resize", recompute, { passive: true });
+            window.addEventListener("snap:progress", onProgress as EventListener);
+
+            cleanup = () => {
+                window.removeEventListener("resize", recompute as EventListener);
+                window.removeEventListener("snap:progress", onProgress as EventListener);
+            };
+        };
+
+        const attachRealScroll = () => {
             const container = containerRef.current;
             if (!container) {
                 raf = requestAnimationFrame(tryAttach);
@@ -209,11 +246,9 @@ export function InfoScreen() {
                 poseRef.current.sectionId = cur.id;
             };
 
-            // ✅ Run once immediately
             compute();
             onScroll();
 
-            // ✅ Keep sections list fresh if layout changes after first mount
             const ro = new ResizeObserver(() => {
                 compute();
                 onScroll();
@@ -224,10 +259,19 @@ export function InfoScreen() {
             container.addEventListener("scroll", onScroll, { passive: true });
 
             cleanup = () => {
-                window.removeEventListener("resize", compute as any);
-                container.removeEventListener("scroll", onScroll as any);
+                window.removeEventListener("resize", compute as EventListener);
+                container.removeEventListener("scroll", onScroll as EventListener);
                 ro.disconnect();
             };
+        };
+
+        const tryAttach = () => {
+            const container = containerRef.current;
+            const looksScrollable =
+                !!container && container.scrollHeight > container.clientHeight + 1;
+
+            if (looksScrollable) attachRealScroll();
+            else attachVirtual();
         };
 
         tryAttach();
@@ -239,21 +283,22 @@ export function InfoScreen() {
     }, [containerRef]);
 
     return (
+        <AboutParallaxBackgroundWebGL
+            poseRef={poseRef}
+            poses={desktopPoses}
+            mobilePoses={mobilePoses}
+            active={true}
+        />
+    );
+}
+
+export function InfoScreen() {
+    const t = useTranslation();
+
+    return (
         <div className="absolute inset-0 h-full">
-            {/* ✅ ALWAYS mounted background */}
-            <div className="pointer-events-none fixed inset-0 z--1">
-                <AboutParallaxBackgroundWebGL
-                    poseRef={poseRef}
-                    poses={desktopPoses}
-                    mobilePoses={mobilePoses}
-                    active={true}
-                />
-            </div>
-
             <AboutUsSection />
-
             <PhilosophySection />
-
             <StatsDashboardSection />
         </div>
     );

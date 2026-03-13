@@ -67,7 +67,7 @@ function DesktopHeroCard({ item }: { item: (typeof ABOUT)[number] }) {
                     {item.title}
                 </h3>
 
-                <div className="mt-6 max-w-2xl text-base leading-relaxed text-neutral-700 dark:text-white/70">
+                <div className="mt-6 max-w-2xl text-xl leading-relaxed text-neutral-700 dark:text-white/70">
                     {item.body}
                 </div>
 
@@ -105,10 +105,10 @@ function MicroPoint({
             <div className="text-[11px] tracking-[0.26em] uppercase text-neutral-600 dark:text-white/55">
                 {kicker}
             </div>
-            <div className="mt-2 text-sm font-semibold text-neutral-900 dark:text-white">
+            <div className="mt-2 text-3xl font-semibold text-neutral-900 dark:text-white">
                 {title}
             </div>
-            <div className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-white/65">
+            <div className="mt-2 text-lg leading-relaxed text-neutral-600 dark:text-white/65">
                 {body}
             </div>
         </div>

@@ -42,6 +42,9 @@ function makePremiumHoloMat() {
     return new THREE.ShaderMaterial({
         transparent: true,
         depthWrite: false,
+        depthTest: false,
+        toneMapped: false,
+        premultipliedAlpha: false,
         blending: THREE.AdditiveBlending,
         uniforms: {
             uTime: { value: 1 },
@@ -237,7 +240,7 @@ const Hero3DModel: React.FC<Hero3DModelProps> = ({
         () => [
             {
                 camPos: new THREE.Vector3(0, 0.2, 12.0),
-                camFov: 50,
+                camFov: 40,
                 groupPos: new THREE.Vector3(0, 0, 0),
                 groupRot: new THREE.Euler(Math.PI / 2, 0, 0),
                 split: 0.0,
@@ -269,8 +272,27 @@ const Hero3DModel: React.FC<Hero3DModelProps> = ({
                 groupRot: new THREE.Euler(Math.PI / 2 + 0.18, -0.1, 3.0),
                 split: 0.5,
                 baseOffset: new THREE.Vector3(0, 0.05, 0.05),
+                color: "#2291c5",
+            },
+            {
+                camPos: new THREE.Vector3(-0.25, 0.28, 8.0),
+                camFov: 42,
+                groupPos: new THREE.Vector3(0.0, -0.02, 0.0),
+                groupRot: new THREE.Euler(Math.PI / 2 + 0.18, -0.1, 0.0),
+                split: 0.3,
+                baseOffset: new THREE.Vector3(0, 0.05, 0.05),
+                color: "#2258ee",
+            },
+            {
+                camPos: new THREE.Vector3(-0.25, 0.28, 8.0),
+                camFov: 42,
+                groupPos: new THREE.Vector3(0.0, -0.05, 0.0),
+                groupRot: new THREE.Euler(Math.PI / 2 + 0.18, -0.1, 3.0),
+                split: 0.5,
+                baseOffset: new THREE.Vector3(0, 0.05, 0.05),
                 color: "#22c55e",
             },
+
             {
                 camPos: new THREE.Vector3(0.0, 0.35, 10.5),
                 camFov: 55,

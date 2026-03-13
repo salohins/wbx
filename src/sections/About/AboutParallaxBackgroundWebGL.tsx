@@ -14,21 +14,18 @@ export type ParallaxPose = {
     baseX: number;
     baseY: number;
     baseScale: number;
-
     gain: number;
     strengthX: number;
     strengthY: number;
-
     depthScale: number;
     frontDrop: number;
-
     layerOverrides?: Array<{
         id: string;
         x?: number;
         y?: number;
         scale?: number;
         opacity?: number;
-        blur?: number; // ignored here
+        blur?: number;
     }>;
 };
 
@@ -47,17 +44,25 @@ function smoothstep01(x: number) {
     return t * t * (3 - 2 * t);
 }
 
+function damp(current: number, target: number, lambda: number, dt: number) {
+    return THREE.MathUtils.damp(current, target, lambda, dt);
+}
+
 function useReducedMotionLike() {
     const [reduced, setReduced] = React.useState(false);
+
     React.useEffect(() => {
         if (typeof window === "undefined") return;
         const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
         if (!mq) return;
+
         const onChange = () => setReduced(!!mq.matches);
         onChange();
+
         mq.addEventListener?.("change", onChange);
         return () => mq.removeEventListener?.("change", onChange);
     }, []);
+
     return reduced;
 }
 
@@ -71,7 +76,6 @@ function getOv(p: ParallaxPose | undefined, id: string) {
     };
 }
 
-/** DOM-like `object-cover` without resizing geometry: crop via texture repeat/offset. */
 function applyTextureCover(tex: THREE.Texture, viewW: number, viewH: number) {
     const img: any = tex.image;
     const imgW = img?.width;
@@ -85,12 +89,10 @@ function applyTextureCover(tex: THREE.Texture, viewW: number, viewH: number) {
     tex.offset.set(0, 0);
 
     if (imgAspect > viewAspect) {
-        // wider -> crop left/right
         const rx = viewAspect / imgAspect;
         tex.repeat.set(rx, 1);
         tex.offset.set((1 - rx) / 2, 0);
     } else {
-        // taller -> crop top/bottom
         const ry = imgAspect / viewAspect;
         tex.repeat.set(1, ry);
         tex.offset.set(0, (1 - ry) / 2);
@@ -99,7 +101,6 @@ function applyTextureCover(tex: THREE.Texture, viewW: number, viewH: number) {
     tex.needsUpdate = true;
 }
 
-/** Touch-primary detection ONLY for disabling pointer parallax (not for picking mobile assets). */
 function detectTouchPrimary() {
     if (typeof window === "undefined") return false;
 
@@ -110,8 +111,8 @@ function detectTouchPrimary() {
     return !!mqCoarse?.matches && !!mqNoHover?.matches && hasTouchPoints;
 }
 
-/** ✅ Breakpoint-based mobile detection for assets/poses. */
-const MOBILE_BP = 900; // tweak: 768 / 820 / 900
+const MOBILE_BP = 900;
+
 function detectMobileViewport() {
     if (typeof window === "undefined") return false;
     return window.innerWidth < MOBILE_BP;
@@ -126,18 +127,25 @@ function Scene({
     poses,
     layers,
     enablePointer,
+    onReady,
 }: {
     poseRef: React.RefObject<ScrollPoseState>;
     poses: ParallaxPose[];
     layers: LayerDef[];
     enablePointer: boolean;
+    onReady?: () => void;
 }) {
     const { camera, gl, size } = useThree();
 
     const urls = useMemo(() => layers.map((l) => l.src), [layers]);
     const maps = useLoader(THREE.TextureLoader, urls);
 
-    // Setup textures once loaded
+    const readySentRef = useRef(false);
+
+    useEffect(() => {
+        readySentRef.current = false;
+    }, [urls.join("|")]);
+
     useEffect(() => {
         const maxAniso = gl.capabilities.getMaxAnisotropy();
 
@@ -145,23 +153,18 @@ function Scene({
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.wrapS = THREE.ClampToEdgeWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
-
-            // mipmaps + better minification for crispness
             tex.generateMipmaps = true;
             tex.minFilter = THREE.LinearMipmapLinearFilter;
             tex.magFilter = THREE.LinearFilter;
-
             tex.anisotropy = Math.min(8, maxAniso);
             tex.needsUpdate = true;
         }
     }, [gl, maps]);
 
-    // cover crop
     useEffect(() => {
         for (const tex of maps) applyTextureCover(tex, size.width, size.height);
     }, [maps, size.width, size.height]);
 
-    // Ortho camera where 1 unit = 1 pixel
     useEffect(() => {
         const cam = camera as THREE.OrthographicCamera;
         cam.left = -size.width / 2;
@@ -170,11 +173,9 @@ function Scene({
         cam.bottom = -size.height / 2;
         cam.near = -2000;
         cam.far = 2000;
-        cam.position.set(0, 0, 10);
         cam.updateProjectionMatrix();
     }, [camera, size]);
 
-    // Pointer normalized -0.5..0.5
     const mx = useRef(0);
     const my = useRef(0);
 
@@ -186,7 +187,6 @@ function Scene({
         }
 
         const onMove = (e: PointerEvent) => {
-            // ✅ hard block any touch/pen movement
             if (e.pointerType !== "mouse") return;
 
             const px = e.clientX / Math.max(1, window.innerWidth);
@@ -201,40 +201,128 @@ function Scene({
 
     const meshRefs = useRef<Record<string, THREE.Mesh | null>>({});
 
-    useFrame((state) => {
+    const baseXRef = useRef(0);
+    const baseYRef = useRef(0);
+    const baseScaleRef = useRef(1);
+    const strengthXRef = useRef(0);
+    const strengthYRef = useRef(0);
+    const gainRef = useRef(1);
+    const depthScaleRef = useRef(0);
+    const frontDropRef = useRef(0);
+
+    const initializedRef = useRef(false);
+
+    const initKey = useMemo(
+        () => `${layers.map((l) => l.src).join("|")}__${poses.length}__${size.width}x${size.height}`,
+        [layers, poses.length, size.width, size.height]
+    );
+
+    useEffect(() => {
+        initializedRef.current = false;
+    }, [initKey]);
+
+    useFrame((state, dt) => {
         if (!poses.length) return;
 
         const idxRaw = poseRef.current?.activeIndex ?? 0;
         const betweenRaw = poseRef.current?.between ?? 0;
 
         const idx = Math.max(0, Math.min(idxRaw, poses.length - 1));
+        const nextIdx = Math.min(idx + 1, poses.length - 1);
         const between = smoothstep01(betweenRaw);
 
         const a = poses[idx];
-        const b = poses[Math.min(idx + 1, poses.length - 1)];
+        const b = poses[nextIdx];
         const lerp = (aa: number, bb: number) => aa + (bb - aa) * between;
 
-        const baseX = lerp(a.baseX, b.baseX);
-        const baseY = lerp(a.baseY, b.baseY);
-        const baseScale = lerp(a.baseScale, b.baseScale);
+        const targetBaseX = lerp(a.baseX, b.baseX);
+        const targetBaseY = lerp(a.baseY, b.baseY);
+        const targetBaseScale = lerp(a.baseScale, b.baseScale);
+        const targetStrengthX = lerp(a.strengthX, b.strengthX);
+        const targetStrengthY = lerp(a.strengthY, b.strengthY);
+        const targetGain = lerp(a.gain, b.gain);
+        const targetDepthScale = lerp(a.depthScale, b.depthScale);
+        const targetFrontDrop = lerp(a.frontDrop, b.frontDrop);
 
-        const strengthX = lerp(a.strengthX, b.strengthX);
-        const strengthY = lerp(a.strengthY, b.strengthY);
-        const gain = lerp(a.gain, b.gain);
+        const cam = state.camera as THREE.OrthographicCamera;
 
-        const depthScale = lerp(a.depthScale, b.depthScale);
-        const frontDrop = lerp(a.frontDrop, b.frontDrop);
+        if (!initializedRef.current) {
+            initializedRef.current = true;
+
+            baseXRef.current = targetBaseX;
+            baseYRef.current = targetBaseY;
+            baseScaleRef.current = targetBaseScale;
+            strengthXRef.current = targetStrengthX;
+            strengthYRef.current = targetStrengthY;
+            gainRef.current = targetGain;
+            depthScaleRef.current = targetDepthScale;
+            frontDropRef.current = targetFrontDrop;
+
+            cam.position.set(targetBaseX, -targetBaseY, 10);
+            cam.updateProjectionMatrix();
+            cam.updateMatrixWorld();
+
+            for (const L of layers) {
+                const mesh = meshRefs.current[L.id];
+                if (!mesh) continue;
+
+                const aOv = getOv(a, L.id);
+                const bOv = getOv(b, L.id);
+
+                const ovX = lerp(aOv.x, bOv.x);
+                const ovY = lerp(aOv.y, bOv.y);
+                const ovS = lerp(aOv.scale, bOv.scale);
+                const ovO = lerp(aOv.opacity, bOv.opacity);
+
+                const depthZoom = Math.abs(L.depth) * targetDepthScale;
+                const drop = targetFrontDrop * L.depth;
+
+                mesh.position.set(ovX, -(L.baseY + drop + ovY), mesh.position.z);
+
+                const s = targetBaseScale * (L.baseScale + depthZoom) * ovS;
+                mesh.scale.setScalar(s);
+
+                const mat = mesh.material as THREE.MeshBasicMaterial;
+                mat.opacity = (L.baseOpacity ?? 1) * ovO;
+            }
+
+            if (!readySentRef.current) {
+                readySentRef.current = true;
+                requestAnimationFrame(() => {
+                    onReady?.();
+                });
+            }
+
+            return;
+        }
+
+        baseXRef.current = damp(baseXRef.current, targetBaseX, 20, dt);
+        baseYRef.current = damp(baseYRef.current, targetBaseY, 20, dt);
+        baseScaleRef.current = damp(baseScaleRef.current, targetBaseScale, 20, dt);
+
+        strengthXRef.current = damp(strengthXRef.current, targetStrengthX, 20, dt);
+        strengthYRef.current = damp(strengthYRef.current, targetStrengthY, 20, dt);
+        gainRef.current = damp(gainRef.current, targetGain, 20, dt);
+
+        depthScaleRef.current = damp(depthScaleRef.current, targetDepthScale, 20, dt);
+        frontDropRef.current = damp(frontDropRef.current, targetFrontDrop, 20, dt);
+
+        const baseX = baseXRef.current;
+        const baseY = baseYRef.current;
+        const baseScale = baseScaleRef.current;
+        const strengthX = strengthXRef.current;
+        const strengthY = strengthYRef.current;
+        const gain = gainRef.current;
+        const depthScale = depthScaleRef.current;
+        const frontDrop = frontDropRef.current;
 
         const mX = enablePointer ? -mx.current * gain : 0;
         const mY = enablePointer ? -my.current * gain : 0;
 
-        // global camera drift (stable)
-        const cam = state.camera as THREE.OrthographicCamera;
-        cam.position.x = baseX + mX * strengthX * 0.25;
-        cam.position.y = -(baseY + mY * strengthY * 0.25);
+        cam.position.x = damp(cam.position.x, baseX + mX * strengthX * 0.25, 6, dt);
+        cam.position.y = damp(cam.position.y, -(baseY + mY * strengthY * 0.25), 6, dt);
         cam.updateMatrixWorld();
 
-        // per-layer parallax (no snapping)
         for (const L of layers) {
             const mesh = meshRefs.current[L.id];
             if (!mesh) continue;
@@ -253,14 +341,19 @@ function Scene({
             const depthZoom = Math.abs(L.depth) * depthScale;
             const drop = frontDrop * L.depth;
 
-            mesh.position.x = parX + ovX;
-            mesh.position.y = -(L.baseY + drop + ovY) + -parY;
+            const targetX = parX + ovX;
+            const targetY = -(L.baseY + drop + ovY) - parY;
+            const targetScale = baseScale * (L.baseScale + depthZoom) * ovS;
+            const targetOpacity = (L.baseOpacity ?? 1) * ovO;
 
-            const s = baseScale * (L.baseScale + depthZoom) * ovS;
-            mesh.scale.setScalar(s);
+            mesh.position.x = damp(mesh.position.x, targetX, 8, dt);
+            mesh.position.y = damp(mesh.position.y, targetY, 8, dt);
+
+            const nextScale = damp(mesh.scale.x, targetScale, 6, dt);
+            mesh.scale.setScalar(nextScale);
 
             const mat = mesh.material as THREE.MeshBasicMaterial;
-            mat.opacity = (L.baseOpacity ?? 1) * ovO;
+            mat.opacity = damp(mat.opacity, targetOpacity, 6, dt);
         }
     });
 
@@ -270,13 +363,24 @@ function Scene({
                 const map = maps[i];
                 const z = i * 0.01;
 
+                const initialPose = poses[0];
+                const ov = getOv(initialPose, L.id);
+                const depthZoom = Math.abs(L.depth) * initialPose.depthScale;
+                const drop = initialPose.frontDrop * L.depth;
+
+                const initialX = ov.x;
+                const initialY = -(L.baseY + drop + ov.y);
+                const initialScale = initialPose.baseScale * (L.baseScale + depthZoom) * ov.scale;
+                const initialOpacity = (L.baseOpacity ?? 1) * ov.opacity;
+
                 return (
                     <mesh
                         key={L.id}
                         ref={(m) => {
                             meshRefs.current[L.id] = m;
                         }}
-                        position={[0, 0, z]}
+                        position={[initialX, initialY, z]}
+                        scale={[initialScale, initialScale, 1]}
                     >
                         <planeGeometry args={[size.width, size.height]} />
                         <meshBasicMaterial
@@ -284,7 +388,7 @@ function Scene({
                             depthWrite={false}
                             depthTest={false}
                             map={map}
-                            opacity={L.baseOpacity ?? 1}
+                            opacity={initialOpacity}
                         />
                     </mesh>
                 );
@@ -295,13 +399,8 @@ function Scene({
 
 export type AboutParallaxBackgroundWebGLProps = {
     poseRef: React.RefObject<ScrollPoseState>;
-
-    /** default (desktop) poses */
     poses?: ParallaxPose[];
-
-    /** optional mobile-specific poses */
     mobilePoses?: ParallaxPose[];
-
     active?: boolean;
 };
 
@@ -314,11 +413,15 @@ export function AboutParallaxBackgroundWebGL({
     const reducedMotion = useReducedMotionLike();
     const enable = active && !reducedMotion;
 
-    // ✅ separate concerns:
-    // - isMobileViewport => assets + poses
-    // - touchPrimary     => disable pointer parallax
-    const [isMobileViewport, setIsMobileViewport] = useState(false);
-    const [touchPrimary, setTouchPrimary] = useState(false);
+    const [isMobileViewport, setIsMobileViewport] = useState(() =>
+        typeof window !== "undefined" ? detectMobileViewport() : false
+    );
+
+    const [touchPrimary, setTouchPrimary] = useState(() =>
+        typeof window !== "undefined" ? detectTouchPrimary() : false
+    );
+
+    const [sceneReady, setSceneReady] = useState(false);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -329,9 +432,11 @@ export function AboutParallaxBackgroundWebGL({
         const update = () => {
             setIsMobileViewport(detectMobileViewport());
             setTouchPrimary(detectTouchPrimary());
+            setSceneReady(false);
         };
 
         update();
+
         mqCoarse?.addEventListener?.("change", update);
         mqNoHover?.addEventListener?.("change", update);
         window.addEventListener("resize", update);
@@ -345,14 +450,12 @@ export function AboutParallaxBackgroundWebGL({
 
     const enablePointer = enable && !touchPrimary;
 
-    // ✅ pick the correct pose set by viewport breakpoint
     const poses = useMemo(() => {
         const desktop = posesProp ?? [];
         const mobile = mobilePoses ?? desktop;
         return isMobileViewport ? mobile : desktop;
     }, [posesProp, mobilePoses, isMobileViewport]);
 
-    // ✅ load correct textures by viewport breakpoint
     const layers: LayerDef[] = useMemo(
         () => [
             { id: "m1", src: pickSrc("m1", isMobileViewport), depth: 0.1, baseScale: 1.5, baseY: 0, zIndex: 6, baseOpacity: 1 },
@@ -369,6 +472,10 @@ export function AboutParallaxBackgroundWebGL({
         return [...layers].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
     }, [layers]);
 
+    useEffect(() => {
+        setSceneReady(false);
+    }, [isMobileViewport, sortedLayers]);
+
     if (!enable) return null;
 
     const nativeDpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
@@ -376,30 +483,45 @@ export function AboutParallaxBackgroundWebGL({
 
     return (
         <div aria-hidden className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-            <Canvas
-                orthographic
-                dpr={dpr}
-                gl={{
-                    alpha: true,
-                    antialias: true,
-                    powerPreference: "high-performance",
-                }}
-                frameloop="always"
-                events={null as any}
-                onCreated={(state) => {
-                    state.gl.setClearColor(0x000000, 0);
-                    state.gl.outputColorSpace = THREE.SRGBColorSpace;
-
-                    state.events?.disconnect?.();
-                    const el = state.gl.domElement;
-                    el.style.pointerEvents = "none";
-                    el.style.touchAction = "none";
+            <div
+                className="absolute inset-0"
+                style={{
+                    opacity: sceneReady ? 1 : 0,
+                    transition: "opacity 700ms ease",
+                    willChange: "opacity",
                 }}
             >
-                <Suspense fallback={null}>
-                    <Scene poseRef={poseRef} poses={poses} layers={sortedLayers} enablePointer={enablePointer} />
-                </Suspense>
-            </Canvas>
+                <Canvas
+                    orthographic
+                    dpr={dpr}
+                    gl={{
+                        alpha: true,
+                        antialias: true,
+                        powerPreference: "high-performance",
+                    }}
+                    frameloop="always"
+                    events={null as any}
+                    onCreated={(state) => {
+                        state.gl.setClearColor(0x000000, 0);
+                        state.gl.outputColorSpace = THREE.SRGBColorSpace;
+
+                        state.events?.disconnect?.();
+                        const el = state.gl.domElement;
+                        el.style.pointerEvents = "none";
+                        el.style.touchAction = "none";
+                    }}
+                >
+                    <Suspense fallback={null}>
+                        <Scene
+                            poseRef={poseRef}
+                            poses={poses}
+                            layers={sortedLayers}
+                            enablePointer={enablePointer}
+                            onReady={() => setSceneReady(true)}
+                        />
+                    </Suspense>
+                </Canvas>
+            </div>
         </div>
     );
 }

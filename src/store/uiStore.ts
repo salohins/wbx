@@ -34,7 +34,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     getLastSection: (path) =>
         get().lastSectionByPath[path],
     theme: 'light',
-    language: 'en',
+    language: 'de',
 
     scrollPositions: {},
 

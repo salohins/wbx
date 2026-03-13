@@ -1,44 +1,12 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { SnapSection } from "../../components/SnapSection2";
 import { useDeviceTier } from "../../hooks/useDeviceTier";
+import { useTranslation } from "../../hooks/useTranslation";
 
 import { PreviewFrame } from "./PreviewFrame";
 
 export type ServiceId = "websites" | "tools" | "branding";
-
-const SERVICES = [
-    {
-        id: "websites" as const,
-        label: "WEBSITES & WEBAPPS",
-        desc: "Individuelle Plattformen & Anwendungen — klar, schnell, skalierbar.",
-        meta: ["UI/UX", "Performance", "SEO"],
-        bgClass: "bg-gradient-to-b from-neutral-950 via-neutral-950 to-neutral-900",
-        icon: "web" as const,
-        accentFrom: "from-[#2563eb]/45",
-        accentTo: "to-[#22d3ee]/25",
-    },
-    {
-        id: "tools" as const,
-        label: "DIGITAL TOOLS",
-        desc: "Admin Panels, CRM, Automationen — gebaut für Prozesse, Daten & Wachstum.",
-        meta: ["Dashboards", "CRM", "Automation"],
-        bgClass: "bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-800",
-        icon: "tools" as const,
-        accentFrom: "from-[#22c55e]/35",
-        accentTo: "to-[#a3e635]/18",
-    },
-    {
-        id: "branding" as const,
-        label: "BRANDING",
-        desc: "Markenauftritt & UI-Systeme mit Charakter, Klarheit und Wiedererkennung.",
-        meta: ["Identity", "Design System", "Guidelines"],
-        bgClass: "bg-gradient-to-b from-neutral-950 via-neutral-950 to-[#220a0a]",
-        icon: "brand" as const,
-        accentFrom: "from-[#a855f7]/35",
-        accentTo: "to-[#fb7185]/22",
-    },
-] as const;
 
 type ServicesProps = {
     initialActive?: ServiceId;
@@ -46,19 +14,68 @@ type ServicesProps = {
 
 export function Services({ initialActive = "websites" }: ServicesProps) {
     const [active, setActive] = useState<ServiceId>(initialActive);
-
-    // ✅ DESKTOP: one expanded at a time
     const [expanded, setExpanded] = useState<ServiceId>(initialActive);
+
+    const t = useTranslation();
+
+    const services = useMemo(
+        () =>
+            [
+                {
+                    id: "websites" as const,
+                    label: t.services.cards.websites.label,
+                    desc: t.services.cards.websites.desc,
+                    meta: [
+                        t.services.cards.websites.meta1,
+                        t.services.cards.websites.meta2,
+                        t.services.cards.websites.meta3,
+                    ],
+                    bgClass: "bg-gradient-to-b from-neutral-950 via-neutral-950 to-neutral-900",
+                    icon: "web" as const,
+                    accentFrom: "from-[#2563eb]/45",
+                    accentTo: "to-[#22d3ee]/25",
+                },
+                {
+                    id: "tools" as const,
+                    label: t.services.cards.tools.label,
+                    desc: t.services.cards.tools.desc,
+                    meta: [
+                        t.services.cards.tools.meta1,
+                        t.services.cards.tools.meta2,
+                        t.services.cards.tools.meta3,
+                    ],
+                    bgClass: "bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-800",
+                    icon: "tools" as const,
+                    accentFrom: "from-[#22c55e]/35",
+                    accentTo: "to-[#a3e635]/18",
+                },
+                {
+                    id: "branding" as const,
+                    label: t.services.cards.branding.label,
+                    desc: t.services.cards.branding.desc,
+                    meta: [
+                        t.services.cards.branding.meta1,
+                        t.services.cards.branding.meta2,
+                        t.services.cards.branding.meta3,
+                    ],
+                    bgClass: "bg-gradient-to-b from-neutral-950 via-neutral-950 to-[#220a0a]",
+                    icon: "brand" as const,
+                    accentFrom: "from-[#a855f7]/35",
+                    accentTo: "to-[#fb7185]/22",
+                },
+            ] as const,
+        [t]
+    );
 
     return (
         <SnapSection
             sectionId="services"
-            className="relative w-full "
-            title={"Leistungen"}
+            className="relative w-full"
+            title={t.sections.services}
             desktopAlign="center"
             mobileSliderMode="peek"
         >
-            {/* ✅ DESKTOP */}
+            {/* DESKTOP */}
             <div className="hidden lg:block w-full">
                 <div className="relative flex w-full items-center py-16 md:py-0">
                     <div className="grid w-full grid-cols-12 items-center gap-y-14 md:gap-x-16">
@@ -68,7 +85,7 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
                             </div>
                         </div>
 
-                        <div className="col-span-12 md:col-span-6 h-full flex items-center ">
+                        <div className="col-span-12 md:col-span-6 h-full flex items-center">
                             <LayoutGroup id="services-desktop">
                                 <motion.div
                                     layout
@@ -77,7 +94,7 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
                                     }}
                                     className="space-y-3 md:space-y-4 flex-column"
                                 >
-                                    {SERVICES.map((s, idx) => (
+                                    {services.map((s, idx) => (
                                         <SnapSection.Slide key={s.id} id={`services:${s.id}`} order={idx}>
                                             <ServiceRow
                                                 serviceId={s.id}
@@ -102,17 +119,17 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
                 </div>
             </div>
 
-            {/* ✅ MOBILE (all open) */}
+            {/* MOBILE */}
             <div className="lg:hidden h-full w-full">
                 <div className="h-full w-full px-6 py-10">
                     <div className="mb-8">
                         <div className="text-[11px] tracking-[0.34em] text-white/55 uppercase">
-                            001 — Services
+                            {t.services.eyebrow}
                         </div>
                     </div>
 
                     <div className="mx-auto w-full max-w-[560px] space-y-3">
-                        {SERVICES.map((s, idx) => (
+                        {services.map((s, idx) => (
                             <SnapSection.Slide key={s.id} id={`services:${s.id}`} order={idx}>
                                 <ServiceRow
                                     serviceId={s.id}
@@ -140,7 +157,6 @@ export function Services({ initialActive = "websites" }: ServicesProps) {
 function ServiceIcon({ type, active }: { type: ServiceId; active: boolean }) {
     const baseColor = type === "websites" ? "#ff2a2a" : type === "tools" ? "#22c55e" : "#a855f7";
 
-    // ✅ float + glow pulse (sinusoidal-like loop)
     const floatAnim = {
         y: [0, -8, 0, 6, 0],
         rotate: [0, -1.2, 0, 1.2, 0],
@@ -215,7 +231,7 @@ function ServiceIcon({ type, active }: { type: ServiceId; active: boolean }) {
     );
 }
 
-/* -------------------- ServiceRow (expanded controls styling) -------------------- */
+/* -------------------- ServiceRow -------------------- */
 
 function ServiceRow({
     serviceId,
@@ -243,17 +259,13 @@ function ServiceRow({
     const isMobile = mode === "mobile";
     const showMore = isMobile || expanded;
 
-    // ✅ reuse global tier logic
     const { bigMobile } = useDeviceTier();
 
-    // ✅ scale a few things up on larger phones (>= 390px)
     const titleSizeMobile = bigMobile ? "text-[36px]" : "text-[32px]";
     const descSizeMobile = bigMobile ? "text-[20px]" : "text-[16px]";
     const pillTextMobile = bigMobile ? "text-[12px]" : "text-[9px]";
-    const btnTextMobile = bigMobile ? "text-[11px]" : "text-[10px]";
     const iconScaleMobile = bigMobile ? "scale-[0.88]" : "scale-[0.80]";
 
-    // ✅ spacing scale on larger phones (>= 390px)
     const padMobile = bigMobile ? "px-7 py-7" : "px-6 py-6";
     const gridGapMobile = bigMobile ? "gap-5" : "gap-4";
     const headerGapMobile = bigMobile ? "gap-5" : "gap-4";
@@ -261,8 +273,6 @@ function ServiceRow({
     const descMtMobile = bigMobile ? "mt-3" : "mt-2";
     const morePtMobile = bigMobile ? "pt-5" : "pt-4";
     const pillsGapMobile = bigMobile ? "gap-3" : "gap-2";
-    const btnRowMtMobile = bigMobile ? "mt-6" : "mt-5";
-    const btnGapMobile = bigMobile ? "gap-4" : "gap-3";
 
     const onKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -357,10 +367,8 @@ function ServiceRow({
             ].join(" ")}
             style={{ boxShadow: baseShadow }}
         >
-            {/* BASE SURFACE */}
             <div aria-hidden className={["absolute inset-0 transition-colors duration-300", surfaceClass].join(" ")} />
 
-            {/* Inactive depth */}
             {tone !== "selected" && (
                 <div
                     aria-hidden
@@ -372,7 +380,6 @@ function ServiceRow({
                 />
             )}
 
-            {/* Micro edge/bezel */}
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300 opacity-70 group-hover:opacity-100"
@@ -384,7 +391,6 @@ function ServiceRow({
                 }}
             />
 
-            {/* GRID (major) */}
             <motion.div
                 aria-hidden
                 className="absolute inset-0"
@@ -398,7 +404,6 @@ function ServiceRow({
                 transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
             />
 
-            {/* Major grid for UNSELECTED only: light vs dark */}
             {tone !== "selected" && (
                 <>
                     <motion.div
@@ -428,7 +433,6 @@ function ServiceRow({
                 </>
             )}
 
-            {/* GRID (minor) */}
             {tone === "selected" ? (
                 <motion.div
                     aria-hidden
@@ -471,7 +475,6 @@ function ServiceRow({
                 </>
             )}
 
-            {/* RADIAL LIGHT */}
             <motion.div
                 aria-hidden
                 className="absolute inset-0"
@@ -492,7 +495,6 @@ function ServiceRow({
                 }}
             />
 
-            {/* Hover glow wash (desktop only) */}
             {!isMobile && (
                 <motion.div
                     aria-hidden
@@ -506,7 +508,6 @@ function ServiceRow({
                 />
             )}
 
-            {/* Highlight sweep / shimmer (desktop only) */}
             {!isMobile && (
                 <motion.div
                     aria-hidden
@@ -522,14 +523,9 @@ function ServiceRow({
                 />
             )}
 
-            {/* CONTENT */}
             <div className={["relative z-[1]", isMobile ? "flex h-full flex-col" : ""].join(" ")}>
                 {isMobile ? (
-                    // ✅ MOBILE: explicit grid items (no contents)
-                    <div
-                        className={`grid grid-cols-[minmax(0,1fr)_72px] ${gridGapMobile} items-start `}
-                    >
-                        {/* left (index + title) */}
+                    <div className={`grid grid-cols-[minmax(0,1fr)_72px] ${gridGapMobile} items-start`}>
                         <div className="min-w-49">
                             <div className={`flex items-center ${headerGapMobile}`}>
                                 <div
@@ -559,9 +555,8 @@ function ServiceRow({
                             </div>
                         </div>
 
-                        {/* icon (top right) */}
                         <motion.div
-                            className="flex-shrink-0 justify-self-start "
+                            className="flex-shrink-0 justify-self-start"
                             transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.9 }}
                         >
                             <div className={`${iconScaleMobile} origin-top-left`}>
@@ -569,7 +564,6 @@ function ServiceRow({
                             </div>
                         </motion.div>
 
-                        {/* desc full width */}
                         <div
                             className={[
                                 `col-span-2 ${descMtMobile} ${descSizeMobile} sm:text-[18px] leading-relaxed`,
@@ -580,7 +574,6 @@ function ServiceRow({
                         </div>
                     </div>
                 ) : (
-                    // ✅ DESKTOP: keep your original structure
                     <div className="flex items-start justify-between gap-6">
                         <div className="min-w-0">
                             <div className="flex items-center gap-4">
@@ -590,7 +583,7 @@ function ServiceRow({
                                         tone === "selected" ? "text-white/90" : "text-neutral-600 dark:text-white/90",
                                     ].join(" ")}
                                 >
-                                    {index}
+                                    0{index}
                                 </div>
                                 <div
                                     className={[
@@ -602,7 +595,7 @@ function ServiceRow({
 
                             <div
                                 className={[
-                                    "mt-3 text-[36px] sm:text-[42px] md:text-[40px] font-semibold tracking-[-0.02em]",
+                                    "mt-3 text-[30px] sm:text-[30px] md:text-[30px] font-semibold tracking-[-0.02em]",
                                     textPrimaryClass,
                                     "break-words",
                                 ].join(" ")}
@@ -612,7 +605,7 @@ function ServiceRow({
 
                             <div
                                 className={[
-                                    "mt-2 max-w-[560px] text-[16px] leading-relaxed",
+                                    "mt-2 max-w-[560px] text-[19px] leading-relaxed",
                                     textSecondaryClass,
                                 ].join(" ")}
                             >
@@ -647,7 +640,7 @@ function ServiceRow({
                                 <div
                                     className={[
                                         "flex items-center",
-                                        isMobile ? `${pillsGapMobile} flex-wrap ` : "flex-wrap gap-2",
+                                        isMobile ? `${pillsGapMobile} flex-wrap` : "flex-wrap gap-2",
                                     ].join(" ")}
                                 >
                                     {meta.map((m) => (

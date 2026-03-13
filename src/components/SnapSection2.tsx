@@ -51,12 +51,10 @@ type MobileSliderMode = "snap" | "peek";
 type SnapCtxType = {
     isMobile: boolean;
 
-    // slides
     register: (id: string, order: number) => void;
     unregister: (id: string) => void;
     setNode: (id: string, node: ReactNode) => void;
 
-    // bleed
     registerBleed: (id: string, order: number, layer: "behind" | "front") => void;
     unregisterBleed: (id: string) => void;
     setBleedNode: (id: string, node: ReactNode) => void;
@@ -76,23 +74,11 @@ type SnapSectionProps = {
     bleedPointerEvents?: boolean;
     clipBleed?: boolean;
 
-    /**
-     * ✅ MOBILE slider mode:
-     * - "snap": full-width slides
-     * - "peek": slides narrower + centered to see next/prev edge
-     */
     mobileSliderMode?: MobileSliderMode;
-
-    /** ✅ How much of the next/prev slide should be visible (per side) in px (peek mode only) */
     mobilePeekGutterPx?: number;
-
-    /** ✅ show title/subtitle only on the first split section (mobileSplitIntoSections mode) */
     mobileShowTitleOnFirstSplit?: boolean;
+    unscaled?: boolean;
 
-    /**
-     * ✅ Split slides into separate REAL snap sections on mobile:
-     * Each SnapSection.Slide becomes its own <section snap-start>.
-     */
     mobileSplitIntoSections?: boolean;
 };
 
@@ -112,21 +98,15 @@ export function SnapSection({
     maxWidth = "max-w-7xl",
     bleedPointerEvents = false,
     clipBleed = true,
-
     mobileSliderMode = "snap",
     mobilePeekGutterPx = 20,
-
     mobileSplitIntoSections = false,
     mobileShowTitleOnFirstSplit = true,
+    unscaled = false,
 }: SnapSectionProps) {
     const isDesktop = useMediaQuery("(min-width: 1024px)");
     const isMobile = !isDesktop;
 
-    /**
-     * ✅ MOBILE SAFE AREA / BOTTOM BAR
-     * Adjust this to match your bottom nav height (px).
-     * Used to keep centered content from feeling too low / overlapping.
-     */
     const nodesRef = React.useRef<Map<string, ReactNode>>(new Map());
     const bleedNodesRef = React.useRef<Map<string, ReactNode>>(new Map());
 
@@ -151,7 +131,9 @@ export function SnapSection({
     const setActiveIndexDeferred = React.useCallback((next: number) => {
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                const startTransition = (React as any).startTransition as undefined | ((cb: () => void) => void);
+                const startTransition = (React as any).startTransition as
+                    | undefined
+                    | ((cb: () => void) => void);
 
                 const commit = () => setActiveIndex((prev) => (prev === next ? prev : next));
 
@@ -172,10 +154,15 @@ export function SnapSection({
     const register = React.useCallback((id: string, order: number) => {
         setSlideList((prev) => {
             const existing = prev.find((s) => s.id === id);
-            const next = existing ? prev.map((s) => (s.id === id ? { id, order } : s)) : [...prev, { id, order }];
+            const next = existing
+                ? prev.map((s) => (s.id === id ? { id, order } : s))
+                : [...prev, { id, order }];
             next.sort((a, b) => a.order - b.order);
 
-            if (prev.length === next.length && prev.every((p, i) => p.id === next[i].id && p.order === next[i].order)) {
+            if (
+                prev.length === next.length &&
+                prev.every((p, i) => p.id === next[i].id && p.order === next[i].order)
+            ) {
                 return prev;
             }
             return next;
@@ -197,26 +184,36 @@ export function SnapSection({
         }
     }, []);
 
-    const registerBleed = React.useCallback((id: string, order: number, layer: "behind" | "front") => {
-        setBleedList((prev) => {
-            const existing = prev.find((b) => b.id === id);
-            const next = existing ? prev.map((b) => (b.id === id ? { id, order, layer } : b)) : [...prev, { id, order, layer }];
+    const registerBleed = React.useCallback(
+        (id: string, order: number, layer: "behind" | "front") => {
+            setBleedList((prev) => {
+                const existing = prev.find((b) => b.id === id);
+                const next = existing
+                    ? prev.map((b) => (b.id === id ? { id, order, layer } : b))
+                    : [...prev, { id, order, layer }];
 
-            next.sort((a, b) => {
-                if (a.layer !== b.layer) return a.layer === "behind" ? -1 : 1;
-                return a.order - b.order;
+                next.sort((a, b) => {
+                    if (a.layer !== b.layer) return a.layer === "behind" ? -1 : 1;
+                    return a.order - b.order;
+                });
+
+                if (
+                    prev.length === next.length &&
+                    prev.every(
+                        (p, i) =>
+                            p.id === next[i].id &&
+                            p.order === next[i].order &&
+                            p.layer === next[i].layer
+                    )
+                ) {
+                    return prev;
+                }
+
+                return next;
             });
-
-            if (
-                prev.length === next.length &&
-                prev.every((p, i) => p.id === next[i].id && p.order === next[i].order && p.layer === next[i].layer)
-            ) {
-                return prev;
-            }
-
-            return next;
-        });
-    }, []);
+        },
+        []
+    );
 
     const unregisterBleed = React.useCallback((id: string) => {
         bleedNodesRef.current.delete(id);
@@ -241,10 +238,12 @@ export function SnapSection({
     const align = isMobile ? "justify-center" : desktopAlignClass[desktopAlign];
 
     const slideCount = slideList.length;
-    const clampIndex = React.useCallback((i: number) => Math.max(0, Math.min(slideCount - 1, i)), [slideCount]);
+    const clampIndex = React.useCallback(
+        (i: number) => Math.max(0, Math.min(slideCount - 1, i)),
+        [slideCount]
+    );
 
-    // ✅ PERF: only render active ± N slides on mobile
-    const MOBILE_WINDOW = 1; // try 1 or 2
+    const MOBILE_WINDOW = 1;
     const getRenderRange = React.useCallback(
         (idx: number) => {
             const start = Math.max(0, idx - MOBILE_WINDOW);
@@ -304,8 +303,7 @@ export function SnapSection({
         if (!isMobile) return;
         if (mobileSplitIntoSections) return;
         snapToIndex(activeIndexRef.current, { instant: true });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isMobile, viewportW, mobileSliderMode, mobilePeekGutterPx, mobileSplitIntoSections]);
+    }, [isMobile, viewportW, mobileSliderMode, mobilePeekGutterPx, mobileSplitIntoSections, snapToIndex]);
 
     React.useEffect(() => {
         if (!isMobile) return;
@@ -321,10 +319,17 @@ export function SnapSection({
 
     const showDots = isMobile && !mobileSplitIntoSections && slideCount > 1;
 
-    const bleedBehind = bleedList.filter((b) => b.layer === "behind").map((b) => bleedNodesRef.current.get(b.id) ?? null);
-    const bleedFront = bleedList.filter((b) => b.layer === "front").map((b) => bleedNodesRef.current.get(b.id) ?? null);
+    const bleedBehind = bleedList
+        .filter((b) => b.layer === "behind")
+        .map((b) => bleedNodesRef.current.get(b.id) ?? null);
+    const bleedFront = bleedList
+        .filter((b) => b.layer === "front")
+        .map((b) => bleedNodesRef.current.get(b.id) ?? null);
 
-    const bleedWrapperBase = ["absolute inset-0", clipBleed ? "" : "", bleedPointerEvents ? "pointer-events-auto" : "pointer-events-none"]
+    const bleedWrapperBase = [
+        "absolute inset-0",
+        bleedPointerEvents ? "pointer-events-auto" : "pointer-events-none",
+    ]
         .filter(Boolean)
         .join(" ");
 
@@ -339,12 +344,16 @@ export function SnapSection({
         if (typeof window === "undefined") return false;
         if (!(t instanceof HTMLElement)) return false;
 
-        const el = t.closest<HTMLElement>("[data-scroll-y], .overflow-y-auto, .overflow-y-scroll, .overflow-auto");
+        const el = t.closest<HTMLElement>(
+            "[data-scroll-y], .overflow-y-auto, .overflow-y-scroll, .overflow-auto"
+        );
         if (!el) return false;
 
         const style = window.getComputedStyle(el);
         return (
-            (style.overflowY === "auto" || style.overflowY === "scroll" || style.overflowY === "overlay") &&
+            (style.overflowY === "auto" ||
+                style.overflowY === "scroll" ||
+                style.overflowY === "overlay") &&
             el.scrollHeight > el.clientHeight + 1
         );
     }, []);
@@ -400,7 +409,6 @@ export function SnapSection({
         allowVerticalScroll: boolean;
     } | null>(null);
 
-    // ✅ PERF: throttle x updates to 1 per RAF
     const rafDragRef = React.useRef<number | null>(null);
     const pendingXRef = React.useRef<number | null>(null);
 
@@ -476,9 +484,9 @@ export function SnapSection({
                     s.dragging = true;
 
                     if (isTextInput(ev.target)) {
-                        const node = (ev.target as HTMLElement | null)?.closest?.("textarea, input, [contenteditable='true']") as
-                            | HTMLElement
-                            | null;
+                        const node = (ev.target as HTMLElement | null)?.closest?.(
+                            "textarea, input, [contenteditable='true']"
+                        ) as HTMLElement | null;
                         node?.blur?.();
                     }
                 } else {
@@ -486,7 +494,10 @@ export function SnapSection({
                 }
             }
 
-            ev.preventDefault();
+            if (s.dragging && ev.cancelable) {
+                ev.preventDefault();
+            }
+
             setXThrottled(clampX(s.startMotionX + dx));
         };
 
@@ -517,18 +528,28 @@ export function SnapSection({
             el.removeEventListener("touchend", onTouchEnd as any);
             el.removeEventListener("touchcancel", onTouchCancel as any);
         };
-    }, [isMobile, slideCount, viewportW, isNoDragTarget, isScrollableY, isTextInput, clampX, finishDragSnap, x, mobileSplitIntoSections, setXThrottled]);
+    }, [
+        isMobile,
+        slideCount,
+        viewportW,
+        isNoDragTarget,
+        isScrollableY,
+        isTextInput,
+        clampX,
+        finishDragSnap,
+        x,
+        mobileSplitIntoSections,
+        setXThrottled,
+    ]);
 
     const showDesktop = isDesktop;
     const showMobile = isMobile;
 
     const viewportPad = mobileSliderMode === "peek" ? mobilePeekGutterPx : SHADOW_GUTTER_PX;
 
-    // ✅ SPLIT MODE: each slide becomes its own snap section on mobile
     if (showMobile && mobileSplitIntoSections) {
         return (
             <SnapCtx.Provider value={ctxValue}>
-                {/* Mount slides invisibly so Slide components can register/setNode */}
                 <div aria-hidden className="absolute inset-0 opacity-0 pointer-events-none">
                     {children}
                 </div>
@@ -537,41 +558,61 @@ export function SnapSection({
                     const showTitleHere = idx === 0 && mobileShowTitleOnFirstSplit && (title || subtitle);
                     const headerExists = Boolean(showTitleHere && (title || subtitle));
 
+                    const splitSectionKey = `${sectionId ?? "snap"}-${s.id}`;
+
                     return (
                         <section
                             key={s.id}
-                            id={idx === 0 ? sectionId : undefined}
-                            data-section={idx === 0 ? sectionId : undefined}
-                            className={["relative h-[100dvh] w-full flex justify-center snap-start", className].filter(Boolean).join(" ")}
-                            style={{ overflowX: "clip", overscrollBehaviorX: "none" }}
+                            id={splitSectionKey}
+                            data-section={splitSectionKey}
+                            className={[
+                                "relative min-h-[100dvh] w-full flex justify-center",
+                                className,
+                            ]
+                                .filter(Boolean)
+                                .join(" ")}
+                            style={{ overflowX: clipBleed ? "clip" : "visible", overscrollBehaviorX: "none" }}
                         >
-                            {idx === 0 && bleedBehind.length > 0 && <div className={`${bleedWrapperBase} z-0`}>{bleedBehind}</div>}
+                            {idx === 0 && bleedBehind.length > 0 && (
+                                <div className={`${bleedWrapperBase} z-0`}>{bleedBehind}</div>
+                            )}
 
-                            <div className={`relative z-10 h-[100dvh] w-full ${maxWidth}`}>
+                            <div className={`relative z-10 min-h-[100dvh] w-full ${maxWidth}`}>
                                 {headerExists && (
                                     <div className="absolute top-0 left-0 z-20 w-full self-start overflow-hidden">
                                         <div
                                             className="bg-neutral-100/20 dark:bg-neutral-900/20 backdrop-blur-xl pt-4 pb-3 px-5"
                                             style={{ touchAction: "pan-y" }}
                                         >
-                                            {title && <h2 className="text-neutral-900 dark:text-white text-lg font-medium">{title}</h2>}
-                                            {subtitle && <p className="mt-1 text-sm text-neutral-600 dark:text-white/70 font-normal">{subtitle}</p>}
+                                            {title && (
+                                                <h2 className="text-neutral-900 dark:text-white text-lg font-medium">
+                                                    {title}
+                                                </h2>
+                                            )}
+                                            {subtitle && (
+                                                <p className="mt-1 text-sm text-neutral-600 dark:text-white/70 font-normal">
+                                                    {subtitle}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* ✅ Add bottom padding for the mobile bottom bar via constant */}
                                 <div
                                     className={[
-                                        "relative z-0 h-full w-full min-h-0 px-5 flex",
-                                        headerExists ? "items-center justify-center pt-24" : "items-center justify-center pt-8",
+                                        "relative z-0 min-h-[100dvh] w-full px-5 flex",
+                                        headerExists
+                                            ? "items-center justify-center pt-24"
+                                            : "items-center justify-center pt-8",
                                     ].join(" ")}
                                 >
                                     {nodesRef.current.get(s.id) ?? null}
                                 </div>
                             </div>
 
-                            {idx === 0 && bleedFront.length > 0 && <div className={`${bleedWrapperBase} z-20`}>{bleedFront}</div>}
+                            {idx === 0 && bleedFront.length > 0 && (
+                                <div className={`${bleedWrapperBase} z-20`}>{bleedFront}</div>
+                            )}
                         </section>
                     );
                 })}
@@ -579,22 +620,30 @@ export function SnapSection({
         );
     }
 
-    // ✅ NORMAL MODE: single SnapSection, mobile slider
     return (
         <section
             id={sectionId}
             data-section={sectionId}
-            className={["relative h-full w-full flex justify-center snap-start", className].filter(Boolean).join(" ")}
-            style={{ overflowX: "clip", overscrollBehaviorX: "none" }}
+            className={[
+                `relative w-full flex justify-center min-h-[100dvh] ${!unscaled ? "2xl:scale-[0.9]" : ""
+                } 3xl:scale-[1] ${title ? "2xl:pt-20" : ""} 3xl:pt-0`,
+                className,
+            ]
+                .filter(Boolean)
+                .join(" ")}
+            style={{
+                overflowX: clipBleed ? "clip" : "visible",
+                overscrollBehaviorX: "none",
+            }}
         >
             <SnapCtx.Provider value={ctxValue}>
                 {bleedBehind.length > 0 && <div className={`${bleedWrapperBase} z-0`}>{bleedBehind}</div>}
 
-                <div className={`relative z-10 h-full w-full flex flex-col ${maxWidth} ${align}`}>
+                <div className={`relative z-10 w-full min-h-[100dvh] flex flex-col ${maxWidth} ${align}`}>
                     {(title || subtitle) && (
                         <div className="absolute top-0 left-0 md:relative z-20 w-full md:w-auto self-start overflow-hidden">
                             <div
-                                className="bg-neutral-100/20 dark:bg-neutral-900/20 md:bg-transparent backdrop-blur-xl md:backdrop-blur-[0] pt-4 pb-3 px-5"
+                                className="bg-neutral-100/20 dark:bg-neutral-900/20 md:bg-transparent dark:md:bg-transparent backdrop-blur-xl md:backdrop-blur-none pt-4 pb-3 px-5"
                                 style={{ touchAction: "pan-y" }}
                             >
                                 {title && (
@@ -628,8 +677,8 @@ export function SnapSection({
                         </div>
                     )}
 
-                    <div className="relative z-0 h-full md:h-auto w-full min-h-0">
-                        {showDesktop && <div className="h-full w-full px-6">{children}</div>}
+                    <div className="relative z-0 w-full min-h-[100dvh] flex-1">
+                        {showDesktop && <div className="w-full px-6">{children}</div>}
 
                         {showMobile && (
                             <div aria-hidden="true" className="absolute inset-0 opacity-0 pointer-events-none">
@@ -640,12 +689,12 @@ export function SnapSection({
                         {showMobile && (
                             <div
                                 ref={viewportRef}
-                                className="h-full w-full"
+                                className="w-full min-h-[100dvh]"
                                 style={{ paddingLeft: viewportPad, paddingRight: viewportPad }}
                             >
                                 <motion.div
                                     ref={sliderElRef}
-                                    className="h-full flex"
+                                    className="min-h-[100dvh] flex"
                                     style={{
                                         x,
                                         marginLeft: -viewportPad,
@@ -664,9 +713,9 @@ export function SnapSection({
                                             const inRange = i >= start && i <= end;
 
                                             return (
-                                                <div key={s.id} className="shrink-0 h-full" style={{ width: slideW }}>
+                                                <div key={s.id} className="shrink-0 min-h-[100dvh]" style={{ width: slideW }}>
                                                     <div
-                                                        className={`pb-10 w-full h-full flex flex-col ${mobileSliderMode === "peek" ? "px-3" : "px-5"
+                                                        className={`pb-10 w-full min-h-[100dvh] flex flex-col ${mobileSliderMode === "peek" ? "px-3" : "px-5"
                                                             } justify-center items-center`}
                                                         style={{
                                                             contentVisibility: inRange ? "visible" : "auto",
@@ -691,7 +740,15 @@ export function SnapSection({
     );
 }
 
-SnapSection.Slide = function Slide({ id, order = 0, children }: { id: string; order?: number; children: React.ReactNode }) {
+SnapSection.Slide = function Slide({
+    id,
+    order = 0,
+    children,
+}: {
+    id: string;
+    order?: number;
+    children: React.ReactNode;
+}) {
     const ctx = React.useContext(SnapCtx);
 
     React.useEffect(() => {

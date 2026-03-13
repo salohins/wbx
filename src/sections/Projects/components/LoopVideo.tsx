@@ -1,25 +1,17 @@
-// sections/Projects/LoopVideo.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 type LoopVideoProps = {
   src: string;
   poster?: string;
-  type?: string; // default "video/mp4"
-  className?: string; // extra classes on <video>
-  objectClassName?: string; // object-fit/pos classes
+  type?: string;
+  className?: string;
+  objectClassName?: string;
   onReady?: () => void;
   onError?: () => void;
-
-  /** optional: control fade timing */
-  fadeMs?: number; // default 500
-  /** optional: if you ever want to disable autoplay externally */
-  autoPlay?: boolean; // default true
-
-  /** ✅ NEW: force pause (e.g. when offscreen) */
-  paused?: boolean;
-
-  /** ✅ NEW: reduce work when paused */
-  unloadWhenPaused?: boolean; // default true
+  fadeMs?: number;
+  autoPlay?: boolean;
+  playWhenVisible?: boolean;
+  visibilityThreshold?: number;
 };
 
 export function LoopVideo({
@@ -32,83 +24,60 @@ export function LoopVideo({
   onError,
   fadeMs = 500,
   autoPlay = true,
-  paused = false,
-  unloadWhenPaused = true,
+  playWhenVisible = true,
+  visibilityThreshold = 0.35,
 }: LoopVideoProps) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [ready, setReady] = useState(false);
+  const [isVisible, setIsVisible] = useState(!playWhenVisible);
 
-  // Track tab visibility (pause in background tabs)
-  const [tabHidden, setTabHidden] = useState(false);
-  useEffect(() => {
-    const onVis = () => setTabHidden(document.visibilityState === "hidden");
-    onVis();
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
-
-  // Effective pause state
-  const shouldPause = paused || tabHidden || !autoPlay;
-
-  // Reset readiness when src changes
   useEffect(() => {
     setReady(false);
   }, [src]);
 
-  // (Optional) drop network/decode load when paused by swapping preload
-  // Note: browsers may not fully "unload" a video without removing src,
-  // but preload=none + pause is still a big win.
-  const preload = useMemo(() => {
-    if (!unloadWhenPaused) return "metadata";
-    return shouldPause ? "none" : "metadata";
-  }, [shouldPause, unloadWhenPaused]);
+  useEffect(() => {
+    if (!playWhenVisible) return;
 
-  // Apply src / load / play-pause logic
+    const el = ref.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting && entry.intersectionRatio >= visibilityThreshold);
+      },
+      {
+        threshold: [0, visibilityThreshold, 0.6, 1],
+      }
+    );
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [playWhenVisible, visibilityThreshold]);
+
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
 
-    // autoplay-safe defaults
     v.muted = true;
+    v.defaultMuted = true;
     v.playsInline = true;
+    v.loop = true;
 
-    // iOS/Safari: load() helps after src changes
     try {
       v.load?.();
-    } catch {}
+    } catch { }
 
-    // If we should pause: pause immediately and exit
-    if (shouldPause) {
-      try {
-        v.pause();
-      } catch {}
-      return;
+    const shouldPlay = autoPlay && (!playWhenVisible || isVisible);
+
+    if (shouldPlay) {
+      const p = v.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => { });
+      }
+    } else {
+      v.pause();
     }
-
-    // Try to play when active
-    const p = v.play();
-    if (p && typeof (p as any).catch === "function") {
-      (p as any).catch(() => {
-        // ignore autoplay rejection — user gesture would be required
-      });
-    }
-  }, [src, shouldPause]);
-
-  // Extra safety: if paused changes while mounted, pause/resume instantly
-  useEffect(() => {
-    const v = ref.current;
-    if (!v) return;
-
-    if (shouldPause) {
-      try {
-        v.pause();
-      } catch {}
-      return;
-    }
-
-    const p = v.play();
-    if (p && typeof (p as any).catch === "function") (p as any).catch(() => {});
-  }, [shouldPause]);
+  }, [src, autoPlay, playWhenVisible, isVisible]);
 
   return (
     <video
@@ -122,12 +91,12 @@ export function LoopVideo({
       ].join(" ")}
       style={{ transitionDuration: `${fadeMs}ms` }}
       poster={poster}
-      autoPlay={!shouldPause} // ✅ don’t advertise autoplay when paused
+      autoPlay={autoPlay}
       loop
       muted
       playsInline
       controls={false}
-      preload={preload as any}
+      preload="metadata"
       disablePictureInPicture
       onCanPlay={() => {
         setReady(true);

@@ -1,6 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
 @import "tailwindcss";
 
+@theme {
+  --breakpoint-3xl: 125rem;
+  /* 1920px */
+  --breakpoint-4xl: 160rem;
+  /* 2560px */
+  --breakpoint-5xl: 240rem;
+  /* 3840px */
+}
+
 /* Enable class-based dark mode */
 @custom-variant dark (&:where(.dark &));
 
@@ -18,7 +27,39 @@
   }
 }
 
+.slide-btn {
+  padding: 14px 24px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid black;
+  background: white;
+  cursor: pointer;
+}
+
+.text-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 1.2em;
+  line-height: 1.2em;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slide-btn:hover .text-wrap {
+  transform: translateY(-50%);
+}
+
+button {
+  cursor: pointer;
+}
+
 html,
 body {
   overflow-x: hidden;
+  scroll-behavior: smooth;
+
+}
+
+html {
+  scroll-behavior: smooth;
 }
